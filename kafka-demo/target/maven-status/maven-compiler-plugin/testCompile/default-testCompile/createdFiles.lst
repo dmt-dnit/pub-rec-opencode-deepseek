@@ -1,0 +1,3 @@
+com/example/kafkademo/ArticleReceiverIntegrationTest.class
+com/example/kafkademo/ArticlePublisherServiceTest.class
+com/example/kafkademo/TestArticleConsumer.class

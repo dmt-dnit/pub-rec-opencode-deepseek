@@ -1,0 +1,3 @@
+/home/dmt/opencode-sandbox/kafka-demo-2/src/test/java/com/example/kafkademo2/ArticlePublisherServiceTest.java
+/home/dmt/opencode-sandbox/kafka-demo-2/src/test/java/com/example/kafkademo2/ArticleReceiverIntegrationTest.java
+/home/dmt/opencode-sandbox/kafka-demo-2/src/test/java/com/example/kafkademo2/TestArticleConsumer.java
