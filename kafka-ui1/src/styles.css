@@ -1,0 +1,3 @@
+html, body { height: 100%; margin: 0; font-family: Roboto, sans-serif; }
+.mat-mdc-card { margin: 16px; }
+.full-width { width: 100%; }
