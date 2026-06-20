@@ -20,14 +20,14 @@ public class UserEntity {
     private String name;
 
     @Enumerated(EnumType.STRING)
-    private Role role = Role.USER;
+    private Role role = Role.CUSTOMER;
 
     @Enumerated(EnumType.STRING)
     private Status status = Status.PENDING;
 
     private Instant createdAt = Instant.now();
 
-    public enum Role { USER, ADMIN }
+    public enum Role { CUSTOMER, WAREHOUSE_STAFF, ADMIN }
     public enum Status { PENDING, ACTIVE, DISABLED }
 
     public UserEntity() {}

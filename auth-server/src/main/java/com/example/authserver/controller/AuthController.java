@@ -38,7 +38,7 @@ public class AuthController {
                 request.email(),
                 passwordEncoder.encode(request.password()),
                 request.name(),
-                UserEntity.Role.USER,
+                UserEntity.Role.CUSTOMER,
                 UserEntity.Status.PENDING
         );
         userRepository.save(user);

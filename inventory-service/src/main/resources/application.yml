@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: inventory-service
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:9000/oauth2/jwks
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+    consumer:
+      group-id: inventory-service-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.example.sharedmodel"
+        spring.json.value.default.type: com.example.sharedmodel.OrderPlacedEvent
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+  datasource:
+    url: jdbc:h2:mem:inventorydb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+server:
+  port: 8081
+
+app:
+  kafka:
+    topic: inventory-events
+    listen-topic: order-events
+
+logging:
+  level:
+    com.example.inventoryservice: INFO
+    org.springframework.security: INFO

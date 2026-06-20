@@ -22,7 +22,7 @@ public class DataSeeder implements CommandLineRunner {
         if (userRepository.count() > 0) return;
 
         UserEntity admin = new UserEntity(
-                "admin@example.com",
+                "admin@example.test",
                 passwordEncoder.encode("admin123"),
                 "Admin User",
                 UserEntity.Role.ADMIN,
@@ -30,17 +30,27 @@ public class DataSeeder implements CommandLineRunner {
         );
         userRepository.save(admin);
 
-        UserEntity user = new UserEntity(
-                "user@example.com",
-                passwordEncoder.encode("user123"),
-                "Test User",
-                UserEntity.Role.USER,
+        UserEntity customer = new UserEntity(
+                "customer1@example.test",
+                passwordEncoder.encode("customer123"),
+                "Demo Customer",
+                UserEntity.Role.CUSTOMER,
                 UserEntity.Status.ACTIVE
         );
-        userRepository.save(user);
+        userRepository.save(customer);
+
+        UserEntity warehouse = new UserEntity(
+                "warehouse1@example.test",
+                passwordEncoder.encode("warehouse123"),
+                "Demo Warehouse Staff",
+                UserEntity.Role.WAREHOUSE_STAFF,
+                UserEntity.Status.ACTIVE
+        );
+        userRepository.save(warehouse);
 
         System.out.println("--- SEEDED USERS ---");
-        System.out.println("Admin: admin@example.com / admin123");
-        System.out.println("User:  user@example.com / user123");
+        System.out.println("Admin:     admin@example.test / admin123");
+        System.out.println("Customer:  customer1@example.test / customer123");
+        System.out.println("Warehouse: warehouse1@example.test / warehouse123");
     }
 }
