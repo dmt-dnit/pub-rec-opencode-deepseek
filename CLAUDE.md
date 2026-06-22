@@ -33,6 +33,7 @@ This is the showcase project for Dimitri and his son's IT startup, built with a 
 1. Claude writes/refines task briefs for the sprint. Before writing a new sprint's briefs, check whether any major framework/runtime dependency (Angular, Spring Boot, the pinned Java version, Kafka client libs) is approaching or past its LTS/support window — don't wait for `npm audit` or a security review to surface it. See "Dependency currency" below for why this matters.
 2. opencode+DeepSeek implement each brief — prefer isolated worktrees/branches per task. Sprint 1 ran concurrent edits on one shared tree, which produced incomplete renames across files; don't repeat that.
 3. Claude verifies against acceptance criteria by reading the actual diffs/code, then writes a handoff doc.
+3.5. Before telling Codex the sprint is ready: run `scripts/pre-review-check.sh <sprint-number>`. It fails closed if the working tree isn't committed or the handoff doc is missing — exactly the gap that let Sprint 4 round 2 reach Codex with 2 of 5 tasks unstarted and no commit checkpoint. Don't skip this because "DeepSeek says it's done" — that self-report is the thing this whole cadence exists to not trust.
 4. Codex reviews independently and gives a verdict.
 5. Reject → blockers become the next sprint's backlog. Accept → next sprint/track starts.
 
