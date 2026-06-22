@@ -36,6 +36,11 @@ This is the showcase project for Dimitri and his son's IT startup, built with a 
 4. Codex reviews independently and gives a verdict.
 5. Reject → blockers become the next sprint's backlog. Accept → next sprint/track starts.
 
+### Verification standards for implementers
+Sprints 1-3 showed a recurring failure mode: a task report claims a check "Pass" based on a proxy signal (a file matching a known-good template, an unrelated test going green, general knowledge of a package's patched version) rather than actually exercising the real check on the real target. Concrete examples Codex caught after a "Pass" was reported: `mvnw.cmd` matched the genuine Maven Wrapper template byte-for-byte but still errored in real PowerShell; a test suite passed while the logs showed the intended fix (a Mockito mock-maker override) wasn't actually the reason it passed; a specific patched-version number was reported without re-checking current advisory data.
+
+To avoid a fourth round of this: when a task brief's acceptance criteria includes running a command or reproducing a result, **show the actual command output**, don't just assert "Pass/Fail." If the target platform/environment for a check isn't available to you (e.g. no Windows/PowerShell, no Docker/Podman daemon, no access to the specific JDK vendor a reviewer uses), **say so explicitly** rather than inferring success from whatever you can run instead. A stated limitation is useful information for the next reviewer; an unverified "Pass" that turns out false costs a whole sprint round.
+
 ### Current status snapshot (2026-06-20 — re-check before relying on this)
 Sprint 1 (Track A: Order/Inventory domain pivot) was rejected by Codex — see `reviews/sprint-1-track-a-review.md`. Sprint 2 (Track A stabilization, tasks F-1–F-7) was rejected by Codex — all functional fixes (F-1–F-4, F-7) were confirmed correct in code, but the reviewer's Windows/OpenJ9 environment couldn't run the tests at all (`mvnw.cmd` missing, Mockito self-attach crash, @EmbeddedKafka JIT segfault). Sprint 3 (Track A close-out, tasks G-1–G-5) addresses those environment blockers:
 
