@@ -15,10 +15,9 @@ import { Order, OrderLineItemRequest, UserInfo } from '../../models/user.model';
 import { Subscription } from 'rxjs';
 
 @Component({
-  selector: 'app-dashboard',
-  standalone: true,
-  imports: [CommonModule, FormsModule, MatToolbarModule, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule, MatSnackBarModule],
-  template: `
+    selector: 'app-dashboard',
+    imports: [CommonModule, FormsModule, MatToolbarModule, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule, MatSnackBarModule],
+    template: `
     <mat-toolbar color="primary">
       <span>Order UI</span>
       <span style="flex:1"></span>
@@ -98,7 +97,7 @@ import { Subscription } from 'rxjs';
       </mat-card>
     </div>
   `,
-  styles: [`
+    styles: [`
     .full-width { width: 100%; }
     .sku-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
     .sku-label { font-weight: 500; }

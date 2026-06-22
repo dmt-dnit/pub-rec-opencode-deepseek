@@ -7,6 +7,7 @@ import com.example.sharedmodel.OrderPlacedEvent;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +24,7 @@ import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -47,8 +49,11 @@ class InventoryIntegrationTest {
         System.setProperty("app.kafka.topic", "test-reservations-out");
     }
 
+    // Skipped when no container runtime (Docker/Podman) is reachable — Testcontainers needs one
     @BeforeAll
     static void setUp() {
+        Assumptions.assumeTrue(DockerClientFactory.instance().isDockerAvailable(),
+                "No container runtime available — skipping Testcontainers-based test");
         kafka.start();
     }
 

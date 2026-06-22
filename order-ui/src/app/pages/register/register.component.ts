@@ -10,10 +10,9 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
-  selector: 'app-register',
-  standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatSnackBarModule],
-  template: `
+    selector: 'app-register',
+    imports: [CommonModule, FormsModule, RouterModule, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatSnackBarModule],
+    template: `
     <div style="display:flex;justify-content:center;align-items:center;height:100vh;background:#f5f5f5">
       <mat-card style="width:400px">
         <mat-card-header>
