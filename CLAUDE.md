@@ -37,9 +37,17 @@ This is the showcase project for Dimitri and his son's IT startup, built with a 
 5. Reject → blockers become the next sprint's backlog. Accept → next sprint/track starts.
 
 ### Current status snapshot (2026-06-20 — re-check before relying on this)
-Sprint 1 (Track A: Order/Inventory domain pivot) was rejected by Codex — see `reviews/sprint-1-track-a-review.md`. Sprint 2 (Track A stabilization, tasks F-1–F-7) is in progress; latest status in `docs/backlog/sprint-2-handoff.md`. Per that snapshot: F-1, F-2, F-3, F-4, F-7 done; F-6 (Angular dependency remediation) unverified; F-5 (rename cleanup + rewriting this file's architecture sections to drop old `kafka-demo`/`article` naming) not started — it's sequenced last since it documents the true end state. Track B hardening (`docs/backlog/sprint-1.md`) does not start until Sprint 2 is fully verified and re-reviewed by Codex.
+Sprint 1 (Track A: Order/Inventory domain pivot) was rejected by Codex — see `reviews/sprint-1-track-a-review.md`. Sprint 2 (Track A stabilization, tasks F-1–F-7) was rejected by Codex — all functional fixes (F-1–F-4, F-7) were confirmed correct in code, but the reviewer's Windows/OpenJ9 environment couldn't run the tests at all (`mvnw.cmd` missing, Mockito self-attach crash, @EmbeddedKafka JIT segfault). Sprint 3 (Track A close-out, tasks G-1–G-5) addresses those environment blockers:
 
-Known infra issue: `./mvnw` has been throwing errors during DeepSeek's runs. Check `.mvn/wrapper/maven-wrapper.properties` (added 2026-06-19) and commit history for resolution status before assuming it's fixed.
+- **G-1** — `mvnw.cmd` added to all 4 Maven modules (generated via `mvn wrapper:wrapper`, Maven 3.9.9).
+- **G-2** — `order-service` Mockito inline mock-maker switched to subclass (`src/test/resources/mockito-extensions/org.mockito.plugins.MockMaker` → `mock-maker-subclass`), avoiding the self-attach failure on OpenJ9.
+- **G-3** — `inventory-service` @EmbeddedKafka replaced with Testcontainers (`confluentinc/cp-kafka` container), sidestepping the in-process JIT segfault on OpenJ9. Requires Docker.
+- **G-4** — Angular dependency remediation re-run from scratch. `npm update` within `^18.2.0` yields no change; all 30 high-severity advisories require Angular 21+ (patched versions: `@angular/core` 21.2.17, `@angular-devkit/build-angular` 0.802.2). Flagged for a dedicated Angular major-upgrade sprint.
+- **G-5** — This status snapshot updated; confirmed no remaining stale naming in `CLAUDE.md`.
+
+Track B hardening (`docs/backlog/sprint-3.md`) remains gated — does not start until Sprint 3 is verified and re-reviewed by Codex.
+
+All 4 Maven modules now have working `mvnw.cmd` (Windows) and `mvnw` (Unix) wrappers via `.mvn/wrapper/maven-wrapper.properties`. The Maven Enforcer plugin (`[21,22)`) fails fast if the active JDK is not Java 21.
 
 ## Architecture
 

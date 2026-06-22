@@ -6,6 +6,8 @@ import com.example.sharedmodel.OrderItem;
 import com.example.sharedmodel.OrderPlacedEvent;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,8 +20,11 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
-import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.KafkaContainer;
+import org.testcontainers.utility.DockerImageName;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -31,17 +36,30 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
-@EmbeddedKafka(
-        partitions = 1,
-        topics = {"test-orders-in", "test-reservations-out"},
-        brokerProperties = {"listeners=PLAINTEXT://localhost:9094", "port=9094"}
-)
 @ActiveProfiles("test")
 class InventoryIntegrationTest {
+
+    static KafkaContainer kafka = new KafkaContainer(
+            DockerImageName.parse("confluentinc/cp-kafka:7.6.0"));
 
     static {
         System.setProperty("app.kafka.listen-topic", "test-orders-in");
         System.setProperty("app.kafka.topic", "test-reservations-out");
+    }
+
+    @BeforeAll
+    static void setUp() {
+        kafka.start();
+    }
+
+    @AfterAll
+    static void tearDown() {
+        kafka.stop();
+    }
+
+    @DynamicPropertySource
+    static void kafkaProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
     }
 
     @Autowired
