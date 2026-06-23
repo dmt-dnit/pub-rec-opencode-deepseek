@@ -1,0 +1,78 @@
+# One-command local backend stack: Kafka + the 3 Spring Boot services.
+#
+# Angular UIs deliberately stay on `npm start` (order-ui/inventory-ui) — their
+# dev-server proxy is still the intended local workflow; they just now proxy
+# to containers instead of bare-metal processes, with no config change needed
+# on their side.
+#
+# Usage: docker compose up -d --build   (or: scripts/startup-all.sh, which
+# falls back to plain podman commands if no compose plugin is installed)
+
+services:
+  zookeeper:
+    image: docker.io/confluentinc/cp-zookeeper:7.8.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: docker.io/confluentinc/cp-kafka:7.8.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      # Internal-only: every consumer of this broker (order-service,
+      # inventory-service) is itself a container on this network, so the
+      # advertised listener is the service name, not localhost.
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+  auth-server:
+    build:
+      context: .
+      dockerfile: auth-server/Dockerfile
+    ports:
+      - "9000:9000"
+    environment:
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-placeholder}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-placeholder}
+      # auth.jwt.issuer is left at its default (http://localhost:9000) on
+      # purpose: the browser hits auth-server via the host-published port,
+      # so "localhost" is correct from the browser's point of view, not the
+      # container network's.
+
+  order-service:
+    build:
+      context: .
+      dockerfile: order-service/Dockerfile
+    depends_on:
+      - kafka
+      - auth-server
+    ports:
+      - "8080:8080"
+    environment:
+      # Container-to-container calls: use service names, not localhost.
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://auth-server:9000/oauth2/jwks
+
+  inventory-service:
+    build:
+      context: .
+      dockerfile: inventory-service/Dockerfile
+    depends_on:
+      - kafka
+      - auth-server
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://auth-server:9000/oauth2/jwks
