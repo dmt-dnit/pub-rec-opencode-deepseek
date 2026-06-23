@@ -45,16 +45,16 @@ Sprints 1-3 showed a recurring failure mode: a task report claims a check "Pass"
 
 To avoid a fourth round of this: when a task brief's acceptance criteria includes running a command or reproducing a result, **show the actual command output**, don't just assert "Pass/Fail." If the target platform/environment for a check isn't available to you (e.g. no Windows/PowerShell, no Docker/Podman daemon, no access to the specific JDK vendor a reviewer uses), **say so explicitly** rather than inferring success from whatever you can run instead. A stated limitation is useful information for the next reviewer; an unverified "Pass" that turns out false costs a whole sprint round.
 
-### Current status snapshot (2026-06-20 — re-check before relying on this)
-Sprint 1 (Track A: Order/Inventory domain pivot) was rejected by Codex — see `reviews/sprint-1-track-a-review.md`. Sprint 2 (Track A stabilization, tasks F-1–F-7) was rejected by Codex — all functional fixes (F-1–F-4, F-7) were confirmed correct in code, but the reviewer's Windows/OpenJ9 environment couldn't run the tests at all (`mvnw.cmd` missing, Mockito self-attach crash, @EmbeddedKafka JIT segfault). Sprint 3 (Track A close-out, tasks G-1–G-5) addresses those environment blockers:
+### Current status snapshot (2026-06-22 — re-check before relying on this)
+Sprint 1 (Track A: Order/Inventory domain pivot) was rejected by Codex — see `reviews/sprint-1-track-a-review.md`. Sprint 2 (Track A stabilization, tasks F-1–F-7) was rejected by Codex — all functional fixes (F-1–F-4, F-7) were confirmed correct in code, but the reviewer's Windows/OpenJ9 environment couldn't run the tests at all (`mvnw.cmd` missing, Mockito self-attach crash, @EmbeddedKafka JIT segfault). Sprint 3 (Track A close-out, tasks G-1–G-5) was rejected by Codex — `order-service`'s OpenJ9 portability was confirmed as real progress, but `mvnw.cmd` was broken at runtime (only-script mode), inventory-service tests hard-failed without Docker, and Angular advisories remained unresolved at 30 high. Sprint 4 (Track A close-out, round 2, tasks H-1–H-5) addresses those regressions:
 
-- **G-1** — `mvnw.cmd` added to all 4 Maven modules (generated via `mvn wrapper:wrapper`, Maven 3.9.9).
-- **G-2** — `order-service` Mockito inline mock-maker switched to subclass (`src/test/resources/mockito-extensions/org.mockito.plugins.MockMaker` → `mock-maker-subclass`), avoiding the self-attach failure on OpenJ9.
-- **G-3** — `inventory-service` @EmbeddedKafka replaced with Testcontainers (`confluentinc/cp-kafka` container), sidestepping the in-process JIT segfault on OpenJ9. Requires Docker.
-- **G-4** — Angular dependency remediation re-run from scratch. `npm update` within `^18.2.0` yields no change; all 30 high-severity advisories require Angular 21+ (patched versions: `@angular/core` 21.2.17, `@angular-devkit/build-angular` 0.802.2). Flagged for a dedicated Angular major-upgrade sprint.
-- **G-5** — This status snapshot updated; confirmed no remaining stale naming in `CLAUDE.md`.
+- **H-1** — `mvnw.cmd` regenerated in classic jar-based mode (`distributionType=bin`) across all 4 Maven modules, replacing the broken only-script mode; `.\mvnw.cmd -v` reports Maven 3.9.9 on PowerShell.
+- **H-2** — `InventoryIntegrationTest` gated on `DockerClientFactory.isDockerAvailable()` via JUnit 5 `Assumptions.assumeTrue`; test skips gracefully (exit 0) when no Docker/Podman is reachable.
+- **H-3** — Angular upgraded from 18.2.x → 21.2.x across both UIs (`ng update` stepped through majors 19, 20, 21). High-severity advisories: 30 → 6. Remaining 6 are in transitive build tooling requiring Angular 22 (pre-release). Both UIs build clean.
+- **H-4** — Mockito maker override file exists on classpath but is not being read at runtime by Mockito 5.14.2's plugin loader (no conflicting resource found in any jar). Fallback: added `-Djdk.attach.allowAttachSelf=true` to surefire `argLine` in `order-service/pom.xml`. All 3 tests pass on OpenJ9 (Semeru 21.0.6).
+- **H-5** — This status snapshot updated; Track B pointer fixed to `docs/backlog/sprint-1.md`; snapshot accurately reflects Sprint 4's outcome per local verification, pending Codex re-review.
 
-Track B hardening (`docs/backlog/sprint-3.md`) remains gated — does not start until Sprint 3 is verified and re-reviewed by Codex.
+Track B hardening (`docs/backlog/sprint-1.md`) remains gated — does not start until Sprint 4 is verified and re-reviewed by Codex.
 
 All 4 Maven modules now have working `mvnw.cmd` (Windows) and `mvnw` (Unix) wrappers via `.mvn/wrapper/maven-wrapper.properties`. The Maven Enforcer plugin (`[21,22)`) fails fast if the active JDK is not Java 21.
 
