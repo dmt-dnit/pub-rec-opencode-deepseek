@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -12,6 +12,7 @@ import { AuthService } from '../../services/auth.service';
 @Component({
     selector: 'app-login',
     imports: [FormsModule, RouterModule, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatSnackBarModule, MatDividerModule],
+    changeDetection: ChangeDetectionStrategy.Eager,
     template: `
     <div style="display:flex;justify-content:center;align-items:center;height:100vh;background:#f5f5f5">
       <mat-card style="width:400px">

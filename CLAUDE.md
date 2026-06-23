@@ -9,7 +9,7 @@ A demo/learning monorepo of independent services that together illustrate JWT-ba
 - `shared-model` — Maven library of cross-service **contracts** (DTOs, Kafka events). No service-specific code.
 - `auth-server` — Spring Boot SSO/auth service (port **9000**). Issues RSA-signed JWTs, exposes JWKS, email/password + Google OAuth2 login.
 - `order-service` (port **8080**) and `inventory-service` (port **8081**) — two Spring Boot services that implement a **choreographed saga**: Order Service publishes `OrderPlacedEvent`, Inventory Service reserves stock and responds with `InventoryReservationEvent`, Order Service consumes the response and updates order status. No central orchestrator.
-- `order-ui` (port **4200**) and `inventory-ui` (port **4201**) — two Angular 18 SPAs, each paired 1:1 with its corresponding backend service.
+- `order-ui` (port **4200**) and `inventory-ui` (port **4201**) — two Angular 22 SPAs, each paired 1:1 with its corresponding backend service.
 
 See `docs/adr/0001-event-driven-showcase-architecture.md` for the canonical architecture description.
 
@@ -82,7 +82,7 @@ A local Kafka broker is required to run the publish/consume flow; `order-service
 `shared-model` holds only things that cross a service boundary on the wire: DTOs (`LoginRequest`, `LoginResponse`, `RegisterRequest`) and Kafka events (`OrderPlacedEvent`, `InventoryReservationEvent`, `OrderItem`). Each service owns its JPA-persisted entities locally (`order-service` owns `Order`, `OrderLineItem`; `inventory-service` owns `Product`; `auth-server` owns `UserEntity`).
 
 ### Frontend
-`order-ui` and `inventory-ui` are structurally identical Angular 18 + Angular Material SPAs (compare `proxy.conf.json` in each to see which backend port they target). Both proxy `/api/auth/**`, `/oauth2/**`, `/login/**` to `auth-server` (9000). `order-ui` proxies `/api/orders/**` + `/ws/**` to `order-service` (8080); `inventory-ui` proxies `/api/inventory/**` + `/ws/**` to `inventory-service` (8081). `auth.interceptor.ts` attaches the JWT as a Bearer token on outgoing requests; `auth.guard.ts` gates routes on `AuthService.isLoggedIn()`.
+`order-ui` and `inventory-ui` are structurally identical Angular 22 + Angular Material SPAs (compare `proxy.conf.json` in each to see which backend port they target). Both proxy `/api/auth/**`, `/oauth2/**`, `/login/**` to `auth-server` (9000). `order-ui` proxies `/api/orders/**` + `/ws/**` to `order-service` (8080); `inventory-ui` proxies `/api/inventory/**` + `/ws/**` to `inventory-service` (8081). `auth.interceptor.ts` attaches the JWT as a Bearer token on outgoing requests; `auth.guard.ts` gates routes on `AuthService.isLoggedIn()`.
 
 ## Common commands
 
