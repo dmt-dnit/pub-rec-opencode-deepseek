@@ -52,7 +52,13 @@ Sprint 1 (Track A: Order/Inventory domain pivot) was rejected by Codex — see `
 - **J-2** — Both UIs normalized: lockfiles aligned (delete+reinstall from identical `package.json`), `angular.json` schematics/buildTarget blocks matched. `npm run build` passes in both. `npm audit`: 14 total, 6 high (all in transitive build tooling — `@angular-devkit/build-angular`, `http-proxy-middleware`, `piscina`, `vite`, `undici`; require Angular 22). Dev servers respond on 4200/4201; SPA routes confirmed.
 - **J-3** — This status snapshot updated to accurately reflect Sprint 4's real progress, Sprint 5's rejection, and Sprint 6's outcome per local verification, pending Codex re-review.
 
-Track B hardening (`docs/backlog/sprint-1.md`) remains gated — does not start until Sprint 6 is verified and re-reviewed by Codex.
+Sprint 7 (Track A close-out, round 5) narrowed to a single open task: two of its three planned tasks were closed by direct work this session (outside the Codex implement/review loop), leaving only the browser smoke test.
+
+- **K-1 (resolved this session, commit `ab37adc`)** — Both UIs upgraded to Angular **22.0.2** / TypeScript **6.0.3** / zone.js **0.16.2** (the versions Sprint 6's review named as current). `npm run build` passes in both; lockfiles stay twin-consistent. A fresh `npm audit` now reports **10 vulnerabilities (4 high, 3 moderate, 3 low)** in each UI — down from Sprint 6's 14/6-high. The remaining 4 highs are all `piscina` (advisory `GHSA-x9g3-xrwr-cwfg`, prototype-pollution→RCE) transitive under `@angular-devkit/build-angular`; npm's only offered remediation is a force-downgrade to `@angular-devkit/build-angular@0.802.2` (a breaking regression, not a fix). They are unresolved-at-current-floor **build-tooling** advisories, not runtime exposure. `npm outdated` shows both UIs at or ahead of the stable `latest` dist-tag — nothing newer to move to.
+- **K-3 (resolved this session, commit `ab37adc`)** — The stale "Angular 18" text at `CLAUDE.md:12` and `:85` now reads "Angular 22"; the only remaining "Angular 18" mention is line 41's historical Dependency-currency note, which is correct as written.
+- **K-2 (open — for Codex)** — The actual browser smoke test (login → order placement → live status update → inventory live feed) remains the one unmet must-fix. Brief: `docs/backlog/tasks/sprint-7/K-2-actual-browser-smoke-test.md`.
+
+Track B hardening (`docs/backlog/sprint-1.md`) remains gated — does not start until Track A closes (Sprint 7's K-2 verified and re-reviewed by Codex).
 
 All 4 Maven modules now have working `mvnw.cmd` (Windows) and `mvnw` (Unix) wrappers via `.mvn/wrapper/maven-wrapper.properties`. The Maven Enforcer plugin (`[21,22)`) fails fast if the active JDK is not Java 21.
 

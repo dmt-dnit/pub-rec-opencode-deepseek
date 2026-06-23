@@ -1,3 +1,8 @@
+> **RESOLVED this session (2026-06-23), commit `ab37adc` — closed outside the Codex loop.**
+> Both UIs were upgraded to Angular **22.0.2** / TypeScript **6.0.3** / zone.js **0.16.2** (the exact versions this review named as current), `npm install` ran, and `npm run build` passes in both. A fresh `npm audit` now reports **10 vulnerabilities (4 high, 3 moderate, 3 low)** per UI — down from 14/6-high. The remaining 4 highs are all `piscina` (advisory **`GHSA-x9g3-xrwr-cwfg`**, prototype-pollution→RCE) transitive under `@angular-devkit/build-angular`; npm's only offered remediation is a force-downgrade to `@angular-devkit/build-angular@0.802.2`, a breaking regression — so they are unresolved-at-current-floor **build-tooling** advisories, not runtime exposure. `npm outdated` shows both UIs at or ahead of the stable `latest` dist-tag. Lockfiles remain twin-consistent. The original brief is retained below for the record.
+
+---
+
 # Task K-1: Re-verify the current dependency floor and upgrade further if the data supports it
 
 **Resolves:** Must-fix (part 1) in `reviews/sprint-6-track-a-review.md` ("`CLAUDE.md:52` presents the current state as an accepted end point by asserting the remaining highs 'require Angular 22', but the audit output itself only proves unresolved transitive build-tooling vulnerabilities under the current Angular 21 toolchain, not that Angular 22 is the sole confirmed fix").

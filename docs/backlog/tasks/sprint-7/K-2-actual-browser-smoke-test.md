@@ -10,12 +10,17 @@ This exact requirement has been in the acceptance criteria of an Angular-related
 
 1. Start the full local stack, in this order (per `CLAUDE.md`'s "Full local stack" section):
    ```
-   cd order-service && docker compose up -d        # Kafka + Zookeeper
-   cd ../auth-server && ./mvnw spring-boot:run      # port 9000
-   cd ../order-service && ./mvnw spring-boot:run    # port 8080
-   cd ../inventory-service && ./mvnw spring-boot:run # port 8081
-   cd ../order-ui && npm start                       # port 4200
-   cd ../inventory-ui && npm start                   # port 4201
+   # Backend (Kafka + auth-server + order/inventory) — one command, containerized.
+   # Verified bringing the full backend up clean this session (all 5 containers
+   # healthy, endpoints 200); prefer this over bare-metal:
+   bash scripts/startup-all.sh
+   # ...or bare-metal instead (still needs Kafka via a container regardless):
+   #   cd auth-server && ./mvnw spring-boot:run        # port 9000
+   #   cd order-service && ./mvnw spring-boot:run      # port 8080
+   #   cd inventory-service && ./mvnw spring-boot:run  # port 8081
+   # Frontends always run on the host:
+   cd order-ui && npm start                            # port 4200
+   cd inventory-ui && npm start                        # port 4201
    ```
 2. Open `order-ui` (`http://localhost:4200`) in an actual browser session:
    - Log in with a seeded account (see `auth-server`'s `DataSeeder` for seeded credentials, e.g. a `CUSTOMER` role account).

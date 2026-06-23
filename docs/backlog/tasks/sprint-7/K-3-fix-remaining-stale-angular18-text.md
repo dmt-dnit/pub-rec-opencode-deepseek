@@ -1,3 +1,8 @@
+> **RESOLVED this session (2026-06-23), commit `ab37adc` — closed outside the Codex loop.**
+> `CLAUDE.md:12` (repo overview) and `CLAUDE.md:85` (frontend architecture) now read "Angular 22", not "Angular 18". The only remaining "Angular 18" mention is line 41's historical Dependency-currency note, which this brief explicitly says to leave alone — verified still reads as historical context, not a current-state claim. The original brief is retained below for the record.
+
+---
+
 # Task K-3: Fix the remaining stale "Angular 18" text in `CLAUDE.md`
 
 **Resolves:** Should-fix in `reviews/sprint-6-track-a-review.md` ("the repo overview and frontend architecture sections still describe the UIs as Angular 18 SPAs at `CLAUDE.md:12` and `CLAUDE.md:85`, which is now false after the Angular 21 migration. `J-3` fixed the snapshot, but the broader repo guidance is still inconsistent").
