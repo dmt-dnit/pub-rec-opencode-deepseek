@@ -44,27 +44,33 @@ class InventoryIntegrationTest {
     static KafkaContainer kafka = new KafkaContainer(
             DockerImageName.parse("confluentinc/cp-kafka:7.6.0"));
 
+    private static boolean dockerAvailable;
+
     static {
         System.setProperty("app.kafka.listen-topic", "test-orders-in");
         System.setProperty("app.kafka.topic", "test-reservations-out");
     }
 
-    // Skipped when no container runtime (Docker/Podman) is reachable — Testcontainers needs one
     @BeforeAll
     static void setUp() {
-        Assumptions.assumeTrue(DockerClientFactory.instance().isDockerAvailable(),
-                "No container runtime available — skipping Testcontainers-based test");
-        kafka.start();
+        dockerAvailable = DockerClientFactory.instance().isDockerAvailable();
+        if (dockerAvailable) {
+            kafka.start();
+        }
     }
 
     @AfterAll
     static void tearDown() {
-        kafka.stop();
+        if (dockerAvailable && kafka.isRunning()) {
+            kafka.stop();
+        }
     }
 
     @DynamicPropertySource
     static void kafkaProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
+        if (dockerAvailable) {
+            registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
+        }
     }
 
     @Autowired
@@ -78,6 +84,9 @@ class InventoryIntegrationTest {
 
     @Test
     void shouldPublishAndReceiveInventoryReservationEvent() throws Exception {
+        Assumptions.assumeTrue(dockerAvailable,
+                "No container runtime available — skipping Testcontainers-based test");
+
         OrderPlacedEvent orderEvent = new OrderPlacedEvent(
                 "order-1",
                 "customer@example.test",
