@@ -9,7 +9,7 @@
     "secure": false,
     "logLevel": "debug"
   },
-  "/login/**": {
+  "/login/oauth2/**": {
     "target": "http://localhost:9000",
     "secure": false,
     "logLevel": "debug"
