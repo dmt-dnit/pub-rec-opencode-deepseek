@@ -1,6 +1,5 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { Client, Message } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
 import { Observable, Subject } from 'rxjs';
 import { Order } from '../models/user.model';
 
@@ -11,8 +10,9 @@ export class WebSocketService implements OnDestroy {
   messages$: Observable<Order> = this.messageSubject.asObservable();
 
   constructor() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     this.client = new Client({
-      webSocketFactory: () => new SockJS('/ws'),
+      brokerURL: `${protocol}//${window.location.host}/ws`,
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
