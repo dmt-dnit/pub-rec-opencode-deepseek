@@ -1,4 +1,4 @@
-import { Injectable, OnDestroy } from '@angular/core';
+import { Injectable, NgZone, OnDestroy } from '@angular/core';
 import { Client, Message } from '@stomp/stompjs';
 import { Observable, Subject } from 'rxjs';
 import { Order } from '../models/user.model';
@@ -9,7 +9,7 @@ export class WebSocketService implements OnDestroy {
   private messageSubject = new Subject<Order>();
   messages$: Observable<Order> = this.messageSubject.asObservable();
 
-  constructor() {
+  constructor(private zone: NgZone) {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     this.client = new Client({
       brokerURL: `${protocol}//${window.location.host}/ws`,
@@ -19,7 +19,7 @@ export class WebSocketService implements OnDestroy {
       onConnect: () => {
         this.client.subscribe('/topic/messages', (msg: Message) => {
           const order: Order = JSON.parse(msg.body);
-          this.messageSubject.next(order);
+          this.zone.run(() => this.messageSubject.next(order));
         });
       }
     });

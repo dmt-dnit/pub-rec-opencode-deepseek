@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -97,7 +97,6 @@ import { Subscription } from 'rxjs';
       </mat-card>
     </div>
   `,
-    changeDetection: ChangeDetectionStrategy.Eager,
     styles: [`
     .full-width { width: 100%; }
     .sku-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }

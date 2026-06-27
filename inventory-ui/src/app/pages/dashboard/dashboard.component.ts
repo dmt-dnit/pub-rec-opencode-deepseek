@@ -106,7 +106,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.loadProducts();
     this.ws.connect();
     this.msgSub = this.ws.messages$.subscribe(reservation => {
-      this.reservations.unshift(reservation);
+      this.reservations = [reservation, ...this.reservations];
       this.connected = true;
       this.loadProducts();
     });
