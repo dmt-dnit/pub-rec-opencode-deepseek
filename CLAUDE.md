@@ -81,7 +81,7 @@ This is the compact ruleset distilled from the Track A retrospective. Full conte
 
 **Current track:** Track B — hardening (unblocked as of 2026-06-28)  
 **Last approved sprint:** Sprint 13 — Track A approved by Codex on 2026-06-28  
-**Next sprint entry point:** Track B Sprint 1 — briefs not yet written; backlog in `docs/backlog/sprint-1.md` (B-1 through B-7)  
+**Next sprint entry point:** Track B Sprint 1 — briefs not yet written; backlog in `docs/backlog/sprint-1.md` (B-1 through B-7). Note: B-7 (documentation refresh) is already complete — `CLAUDE.md` describes current architecture and `README.md` exists with saga diagram. Skip B-7 when writing briefs.  
 **Pre-review command:** `bash scripts/pre-review-check.sh <sprint-number>`
 
 **Active caveats (do not re-litigate each sprint — update only when signal changes):**
