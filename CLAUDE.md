@@ -53,6 +53,30 @@ Sprints 1-3 showed a recurring failure mode: a task report claims a check "Pass"
 
 To avoid a fourth round of this: when a task brief's acceptance criteria includes running a command or reproducing a result, **show the actual command output**, don't just assert "Pass/Fail." If the target platform/environment for a check isn't available to you (e.g. no Windows/PowerShell, no Docker/Podman daemon, no access to the specific JDK vendor a reviewer uses), **say so explicitly** rather than inferring success from whatever you can run instead. A stated limitation is useful information for the next reviewer; an unverified "Pass" that turns out false costs a whole sprint round.
 
+### Sprint rules card (coordinator + reviewer reference)
+
+This is the compact ruleset distilled from the Track A retrospective. Full context: `docs/backlog/track-a-retro.md`.
+
+**Coordinator (Claude) — every sprint:**
+1. Acceptance criteria = observable outcome, not implementation step. Rewrite if it can only be verified by reading intent.
+2. Read the actual template/DOM before writing any E2E selector. Include the relevant snippet in the brief.
+3. E2E tasks assume dirty DB. Idempotency across repeated runs is a first-class criterion.
+4. Max ~3 loosely coupled tasks per sprint. Tightly coupled tasks go in one brief. Break large tasks before briefing.
+5. Note agent choice in every handoff. Default: haiku for mechanical, sonnet/opus for logic. OpenCode+DeepSeek only on explicit trigger (two failed rounds, ambiguous architecture, security/performance, genuine second-opinion value).
+6. Worktree agent: verify the branch has new commits. If not, apply diff manually to main and note it in handoff.
+7. `bash scripts/pre-review-check.sh <N>` must pass before handing to Codex. No exceptions.
+8. Handoff must include: exact commits · done/not-done · actual command output · what couldn't run and why · browser status ("passed" or "Codex-only") · `git status --short` confirming clean tree.
+9. `npm audit --omit=dev` is the pass/fail signal. Full audit goes in caveats, not the scorecard.
+10. Update CLAUDE.md status snapshot every sprint.
+
+**Reviewer (Codex) — every review:**
+1. Check acceptance criteria format — flag "use this locator" criteria, don't just test against them.
+2. Browser tasks must say "browser accepted" or "Codex-only verification." No silent hand-offs.
+3. E2E tasks: clean or dirty DB? Dirty is the default; clean-only is a weaker result.
+4. `git status --short` must be clean. Generated artifacts in the diff are a flag.
+5. Standing caveats: don't re-litigate. Check only if the signal changed. Reference the caveats table in this file.
+6. Write to `reviews/*` only. No source edits from the reviewer path.
+
 ### Current status snapshot (2026-06-28)
 
 **Current track:** Track B — hardening (unblocked as of 2026-06-28)  

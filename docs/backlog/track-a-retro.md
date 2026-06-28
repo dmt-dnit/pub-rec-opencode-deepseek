@@ -107,46 +107,37 @@
 
 ## Synthesis — Track B working rules
 
-### What we're keeping
+The rules below apply to every sprint in Track B. They are also reproduced in `CLAUDE.md` under "Sprint rules card" so Codex sees them at the start of every review session without a manual paste.
 
-- **Pre-review check mandatory** (`scripts/pre-review-check.sh <N>`) before every Codex handoff, no exceptions.
-- **Handoff doc format** — exact commits, done/not-done per task, actual command output (not summarized), which checks couldn't run and why, whether browser validation is required, `git status --short` confirming clean tree.
-- **Worktree isolation per task** — coordinator must verify the worktree branch has new commits before declaring the agent done; if not, read the diff from the worktree, apply to main manually, and note this in the handoff.
-- **"Show actual output, not asserted Pass"** — if the environment can't run the check, state the limitation explicitly; a stated limitation is more useful than an unverified pass.
-- **Production audit separate from full audit** — `npm audit --omit=dev = 0` is the pass/fail signal; full audit output is reported as a caveat, not a blocker unless new runtime-path advisories appear.
+### Coordinator rules (Claude — planning, briefing, verifying)
 
-### What we're changing
+1. **Brief format: WHAT then HOW.** Acceptance criteria describe the observable outcome ("smoke test passes twice on a non-empty DB"). Implementation guidance (locator suggestions, library choices) goes in the brief body as guidance, not as the acceptance bar. If a criterion can only be verified by reading intent, rewrite it.
+2. **Read the actual template before any E2E selector.** Include the relevant template snippet in the brief and explain why the selector is unambiguous against prior data. Three Playwright rounds were wasted by skipping this step.
+3. **E2E tasks: dirty DB is the default assumption.** Idempotency across repeated runs is a first-class acceptance criterion, not a footnote.
+4. **Sprint sizing: max ~3 loosely coupled tasks.** Tightly coupled tasks go in the same brief. Large Track B tasks (B-3, B-5) must be broken into sub-tasks before briefing.
+5. **Agent choice noted in every handoff.** Default: Claude haiku for mechanical edits, sonnet/opus for logic. Bring OpenCode+DeepSeek back only on an explicit trigger: two failed implementation rounds on the same task; ambiguous architecture work; security- or performance-sensitive code; or a case where a genuinely independent second approach has real value.
+6. **Worktree agents: verify commits before declaring done.** If the worktree branch has no new commits, read the diff from the worktree path, apply to main manually, and note this in the handoff.
+7. **Pre-review check mandatory.** `bash scripts/pre-review-check.sh <N>` must pass before handing to Codex. No exceptions.
+8. **Handoff must include:** exact commits · done/not-done per task · actual command output (not summarized) · which checks couldn't run and why · browser status ("passed" or "Codex-only") · `git status --short` confirming clean tree.
+9. **Production audit separate from full audit.** `npm audit --omit=dev = 0` is the pass/fail signal. Full audit goes in the caveats table, not the scorecard.
+10. **CLAUDE.md status snapshot updated every sprint.** Current track · last approved sprint · active caveats · next entry point · pre-review command. Repo docs beat chat memory.
 
-**Acceptance criteria as observable outcomes, not implementation steps.**  
-"The smoke test passes twice consecutively against a non-empty database" is the acceptance criterion. "Use this locator" is implementation guidance that belongs in the brief body, not the acceptance bar. Codex will reject criteria it can only verify by reading intent.
+### Reviewer rules (Codex — every review session)
 
-**Read the actual template before writing any E2E selector.**  
-Three Playwright rounds were wasted because selectors were designed from intent rather than the rendered DOM. For any E2E task, the brief must include the relevant template snippet and explain why the proposed selector is unambiguous against a non-empty database.
+1. **Check acceptance criteria format.** If a criterion is "use this locator" rather than an observable outcome, flag it — don't just test against it.
+2. **Browser tasks:** handoff must say "browser acceptance passed" or "Codex-only browser verification required." No silent hand-offs where Codex discovers the failure first.
+3. **E2E tasks:** note whether the test was run against a clean or dirty database. Dirty is the default; a clean-DB-only pass is a weaker result and should be flagged.
+4. **Handoff cleanliness:** `git status --short` must show a clean tree. Generated artifacts (test-results, dist, .claude/) appearing in the diff are a flag, not noise to ignore.
+5. **Standing caveats:** don't re-litigate per sprint. Check only if the signal changed (new advisory, new Angular version, new Java warning). Reference the caveats table in `CLAUDE.md`.
+6. **Reviewer writes to `reviews/*` only.** No source edits from the reviewer path. Retro files are the only other exception.
 
-**E2E tests assume a dirty database by default.**  
-Smoke tests must be idempotent across repeated runs. Selectors must distinguish the *newly placed* order from prior data, not just *an* order. This is now a first-class acceptance criterion on every E2E task, not an afterthought.
+### On closing the coordination loop
 
-**Known-caveats table replaces per-sprint re-litigation.**  
-Standing caveats (npm dev-tooling advisories, Angular builder deprecation, Java agent warnings, Testcontainers shutdown noise) are documented once below. Handoffs reference the table; they don't re-argue whether each caveat is a blocker. The table is updated only when the signal changes.
+Current loop: Claude writes handoff → Dimitri pastes to Codex → Codex writes review → Dimitri pastes back. Two manual steps.
 
-**"Codex-only browser verification" is a declaration, not an excuse.**  
-Handoffs must say one of two things about browser acceptance: "browser acceptance passed" (implementer or coordinator ran it) or "Codex-only browser verification required" (no implementer/coordinator browser access — Codex is the first real exercise of this path). Silently handing off browser-required work as "done" and letting Codex discover the failure is not acceptable.
-
-**Implementation agent choice is case-by-case, with explicit triggers.**  
-Default for Track B: Claude haiku agents (worktree-isolated) for mechanical tasks, Claude sonnet/opus for logic-heavy work. Bring OpenCode+DeepSeek back only on a clear trigger: two failed implementation rounds on the same task, ambiguous architecture work, security- or performance-sensitive code, or when a second genuinely independent implementation approach has real value. The coordinator notes the agent choice in the handoff.
-
-**Context resilience: repo docs beat chat memory.**  
-CLAUDE.md is the canonical short current-state snapshot. It must always contain: current track, last approved sprint, active caveats, next sprint entry point, and the exact pre-review command. Updated at the end of every sprint. Task briefs remain self-contained. Memory files and chat context are supplements, not the source of truth.
-
-### On closing the coordination loop (Dimitri's ask)
-
-The current loop — Claude writes handoff → Dimitri pastes to Codex → Codex writes review → Dimitri pastes back — has two manual steps that could be automated. Clean options in order of effort:
-
-1. **GitHub Actions notification (low effort, Track B B-5)** — when a `reviews/sprint-N-*.md` file is committed and pushed, a workflow step posts to Slack or a webhook. The CI event closes the loop without any new infrastructure.
-2. **Codex writes reviews directly to the repo via git** — constrained to `reviews/*` and doc-only retro files only; no source edits from the reviewer path. The coordinator picks it up at the start of the next session by reading the file.
-3. **The app itself (ironic path)** — wire a Kafka event or REST call when a review is ready; inventory-ui displays it. Fun, but adds real production risk to a coordination concern. Not recommended until the app is deployed and stable.
-
-Option 1 is the right Track B target. Option 2 is achievable now if Codex is willing to push directly. Option 3 is a Track C idea.
+1. **GitHub Actions + Slack/webhook (Track B B-5 target)** — trigger on `reviews/sprint-N-*.md` commit+push; CI posts notification. No new infrastructure, closes both manual steps.
+2. **Codex commits reviews directly** — constrained to `reviews/*` and retro files; coordinator reads at next session start. Achievable now if Codex has push access.
+3. **The app itself (Track C idea)** — not until the system is deployed and stable.
 
 ### Open risks going into Track B
 
