@@ -6,6 +6,21 @@ const INVENTORY_UI = 'http://localhost:4201';
 const CUSTOMER = { email: 'customer1@example.test', password: 'customer123' };
 const WAREHOUSE = { email: 'warehouse1@example.test', password: 'warehouse123' };
 
+function attachDiagnosticListeners(page: Page, label: string, errors: string[]) {
+  page.on('console', msg => {
+    if (msg.type() === 'error') errors.push(`[${label}] console.error: ${msg.text()}`);
+  });
+  page.on('pageerror', err => {
+    errors.push(`[${label}] pageerror: ${err.message}`);
+  });
+  page.on('requestfailed', req => {
+    const url = req.url();
+    // Ignore known environmental noise
+    if (url.includes('fonts.googleapis.com') || url.includes('favicon')) return;
+    errors.push(`[${label}] requestfailed: ${req.failure()?.errorText} — ${url}`);
+  });
+}
+
 /**
  * Log in to one of the Angular UIs.
  *
@@ -26,12 +41,16 @@ async function login(
   await page.waitForURL('**/dashboard', { timeout: 15_000 });
 }
 
-test('smoke: order placement saga updates both dashboards', async ({ browser }) => {
+test('smoke: order placement saga updates both dashboards', async ({ browser }, testInfo) => {
   // Two independent browser sessions — one per UI/user
   const orderCtx: BrowserContext = await browser.newContext();
   const inventoryCtx: BrowserContext = await browser.newContext();
   const orderPage: Page = await orderCtx.newPage();
   const inventoryPage: Page = await inventoryCtx.newPage();
+
+  const diagnosticErrors: string[] = [];
+  attachDiagnosticListeners(orderPage, 'order-ui', diagnosticErrors);
+  attachDiagnosticListeners(inventoryPage, 'inventory-ui', diagnosticErrors);
 
   try {
     // ---------------------------------------------------------------
@@ -133,6 +152,12 @@ test('smoke: order placement saga updates both dashboards', async ({ browser }) 
     await expect(qtyCell).toHaveText(String(initialQty - 1), { timeout: 10_000 });
 
   } finally {
+    if (diagnosticErrors.length > 0) {
+      await testInfo.attach('browser-diagnostics', {
+        body: diagnosticErrors.join('\n'),
+        contentType: 'text/plain'
+      });
+    }
     await orderCtx.close();
     await inventoryCtx.close();
   }
