@@ -37,6 +37,14 @@ This is the showcase project for Dimitri and his son's IT startup, built with a 
 4. Codex reviews independently and gives a verdict.
 5. Reject → blockers become the next sprint's backlog. Accept → next sprint/track starts.
 
+### Who implements what
+
+Default: opencode+DeepSeek implement all code changes via isolated worktrees. Claude is coordinator, not implementer.
+
+**Coordinator-direct** is acceptable only for changes where the diff is trivially obvious, non-controversial, and fully verifiable by reading alone: updating a snapshot paragraph in CLAUDE.md, fixing a doc typo, removing a clearly dead import. Not for logic, type, or config changes — even one-liners. Sprint 11 O-1/O-2 went coordinator-direct and passed Codex, but the precedent is bad: it skips the agent self-report / coordinator diff-check / Codex code-review chain that the whole workflow depends on.
+
+**Claude agent (worktree) as fallback** — if opencode is unavailable or repeatedly failing, spawn a Claude subagent with `isolation: "worktree"` as a stand-in implementer. Use `model: "haiku"` for mechanical tasks (lockfile edits, selector fixes, single-import tweaks) and `model: "sonnet"` or `model: "opus"` for logic-heavy work. The same rules still apply: worktree isolation, coordinator reads the actual diff to verify, handoff doc written before Codex sees it. A Claude agent is not exempt from the "show actual output, not asserted Pass" standard.
+
 ### Dependency currency
 Angular 18.2.x (this repo's original pin) was very likely the correct LTS choice when the project was set up — Angular's LTS window is 18 months from release, and 18 was current/active at that time. The problem that produced sprints F-6/G-4/H-3 wasn't the initial pick, it was two sprints' worth of silent drift afterward: nobody checked dependency currency until `npm audit` forced the question, by which point the project was several majors behind and facing one large, risky `ng update` migration instead of several small, cheap ones along the way. Checking EOL/LTS status at the start of each sprint (step 1 above) turns that into routine hygiene instead of a late, compounded surprise — this applies to the Java version pin and Spring Boot/Kafka client versions too, not just Angular.
 
