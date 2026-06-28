@@ -14,7 +14,7 @@
 | `9a69ce7` | B-1 | retry/DLQ error handling + idempotent Kafka listeners |
 | `3f8d64b` | B-1 | tighten order idempotency assertion to `times(1)` |
 
-`git status --short` at handoff: clean except untracked JVM crash dumps in `order-service/` (`core.*`, `javacore.*`, `Snap.*`, `jitdump.*` — OpenJ9 artifacts, not part of this sprint, deliberately not committed; repo has no `.gitignore`).
+`git status --short` at handoff: **fully clean** (empty). `pre-review-check.sh 14` passes.
 
 ---
 
