@@ -79,6 +79,12 @@ test('smoke: order placement saga updates both dashboards', async ({ browser }, 
     const initialQtyText = await qtyCell.innerText();
     const initialQty = parseInt(initialQtyText.trim(), 10);
 
+    // Capture current order card count before placing so we can wait for exactly +1
+    const orderCards = orderPage
+      .locator('mat-card')
+      .filter({ has: orderPage.locator('.order-header') });
+    const initialOrderCount = await orderCards.count();
+
     // ---------------------------------------------------------------
     // 3. Place order: increment SKU-001 to qty 1
     //
@@ -121,7 +127,11 @@ test('smoke: order placement saga updates both dashboards', async ({ browser }, 
     // DashboardComponent adds the new order at the top of this.orders.
     // Each order renders inside a mat-card with an .order-header child.
     // ---------------------------------------------------------------
-    await expect(orderPage.locator('.order-header')).toBeVisible({ timeout: 15_000 });
+    // Wait for exactly one new order card to appear (count increases by 1),
+    // then pin newestOrderCard to the first card in the list (newest = prepended to top).
+    await expect(orderCards).toHaveCount(initialOrderCount + 1, { timeout: 15_000 });
+    const newestOrderCard = orderCards.first();
+    await expect(newestOrderCard.locator('.order-header')).toBeVisible();
 
     // ---------------------------------------------------------------
     // 7. Order reaches CONFIRMED status (saga closes via WebSocket)
@@ -130,7 +140,7 @@ test('smoke: order placement saga updates both dashboards', async ({ browser }, 
     // and pushes the updated Order over STOMP to order-ui.
     // The Angular template applies .badge-confirmed when status is CONFIRMED.
     // ---------------------------------------------------------------
-    await expect(orderPage.locator('.badge-confirmed')).toBeVisible({ timeout: 20_000 });
+    await expect(newestOrderCard.locator('.badge-confirmed')).toBeVisible({ timeout: 20_000 });
 
     // ---------------------------------------------------------------
     // 8. Inventory reservation feed shows a RESERVED chip
