@@ -1,0 +1,160 @@
+# CI workflow for pub-rec-opencode-deepseek
+#
+# Build order:
+#   shared-model (install) → auth-server / order-service / inventory-service (verify, parallel)
+#   order-ui / inventory-ui (parallel, independent of Maven jobs)
+#
+# M2 sharing: actions/upload-artifact → actions/download-artifact
+#   Rationale: artifacts are deterministic within a workflow run — they are always present after
+#   the shared-model job succeeds. actions/cache is best-effort and can be cold on first run,
+#   which would cause downstream jobs to fail resolving com.example:shared-model at compile time.
+#
+#   The local Maven repo is forced to a WORKSPACE-RELATIVE dir via
+#   -Dmaven.repo.local=${{ github.workspace }}/.m2 on every mvnw call. This is required because
+#   actions/upload-artifact@v4 / download-artifact@v4 resolve paths through @actions/glob, which
+#   does NOT expand a leading "~". A workspace-relative path ("${{ github.workspace }}/.m2/...")
+#   is unambiguous and globbable, so the shared-model jar reliably lands in the downstream repo.
+#
+#   setup-java's `cache: maven` keys off the default ~/.m2 and is therefore a no-op for our
+#   workspace-local repo, so it is intentionally omitted from the Maven jobs.
+#
+# Failure isolation: three separate Maven jobs (auth-server, order-service, inventory-service)
+#   each have their own `needs: shared-model`. A test failure in one module fails only that job;
+#   the other two jobs continue and report independently.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+
+  # ── 1. Shared library ────────────────────────────────────────────────────────
+  shared-model:
+    name: shared-model (install)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Build and install shared-model
+        run: cd shared-model && ./mvnw --batch-mode -Dmaven.repo.local=${{ github.workspace }}/.m2 clean install
+
+      - name: Upload shared-model M2 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: m2-shared-model
+          # Workspace-relative path (no "~") so @actions/glob resolves it.
+          # Downstream jobs download it back into the same workspace-relative repo.
+          path: .m2/repository/com/example/shared-model/
+          retention-days: 1
+
+  # ── 2a. auth-server ──────────────────────────────────────────────────────────
+  auth-server:
+    name: auth-server (verify)
+    needs: shared-model
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Restore shared-model to local M2
+        uses: actions/download-artifact@v4
+        with:
+          name: m2-shared-model
+          path: .m2/repository/com/example/shared-model/
+
+      - name: Build and test auth-server
+        run: cd auth-server && ./mvnw --batch-mode -Dmaven.repo.local=${{ github.workspace }}/.m2 clean verify
+
+  # ── 2b. order-service ────────────────────────────────────────────────────────
+  order-service:
+    name: order-service (verify)
+    needs: shared-model
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Restore shared-model to local M2
+        uses: actions/download-artifact@v4
+        with:
+          name: m2-shared-model
+          path: .m2/repository/com/example/shared-model/
+
+      - name: Build and test order-service
+        run: cd order-service && ./mvnw --batch-mode -Dmaven.repo.local=${{ github.workspace }}/.m2 clean verify
+
+  # ── 2c. inventory-service ────────────────────────────────────────────────────
+  inventory-service:
+    name: inventory-service (verify)
+    needs: shared-model
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Restore shared-model to local M2
+        uses: actions/download-artifact@v4
+        with:
+          name: m2-shared-model
+          path: .m2/repository/com/example/shared-model/
+
+      - name: Build and test inventory-service
+        run: cd inventory-service && ./mvnw --batch-mode -Dmaven.repo.local=${{ github.workspace }}/.m2 clean verify
+
+  # ── 3a. order-ui ─────────────────────────────────────────────────────────────
+  order-ui:
+    name: order-ui (build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 22 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: order-ui/package-lock.json
+
+      - name: Install and build order-ui
+        run: cd order-ui && npm ci && npm run build
+
+  # ── 3b. inventory-ui ─────────────────────────────────────────────────────────
+  inventory-ui:
+    name: inventory-ui (build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 22 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: inventory-ui/package-lock.json
+
+      - name: Install and build inventory-ui
+        run: cd inventory-ui && npm ci && npm run build

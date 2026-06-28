@@ -81,7 +81,7 @@ This is the compact ruleset distilled from the Track A retrospective. Full conte
 
 **Current track:** Track B — hardening (unblocked as of 2026-06-28)  
 **Last approved sprint:** Sprint 13 — Track A approved by Codex on 2026-06-28  
-**Next sprint entry point:** Track B Sprint 1 — briefs not yet written; backlog in `docs/backlog/sprint-1.md` (B-1 through B-7). Note: B-7 (documentation refresh) is already complete — `CLAUDE.md` describes current architecture and `README.md` exists with saga diagram. Skip B-7 when writing briefs.  
+**Next sprint entry point:** Sprint 14 (Track B Sprint 1) — briefs written: B-5 (CI pipeline) + B-1 (failure handling: retry/DLQ/idempotency). Overview `docs/backlog/sprint-14.md`; briefs in `docs/backlog/tasks/sprint-14/`. Not yet implemented. Numbered 14 to continue the global counter (Track A = 1–13); review file will be `reviews/sprint-14-track-b-review.md`. Remaining Track B backlog (`docs/backlog/sprint-1.md` §Track B): B-2, B-3, B-4, B-6 — later sprints (B-6 = Docker Compose, its own sprint). B-7 already complete.  
 **Pre-review command:** `bash scripts/pre-review-check.sh <sprint-number>`
 
 **Active caveats (do not re-litigate each sprint — update only when signal changes):**
