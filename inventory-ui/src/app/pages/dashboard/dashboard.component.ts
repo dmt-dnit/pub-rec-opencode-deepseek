@@ -5,7 +5,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTableModule } from '@angular/material/table';
+import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { AuthService } from '../../services/auth.service';
@@ -33,7 +33,7 @@ import { Subscription } from 'rxjs';
           <mat-card-title>Stock Dashboard</mat-card-title>
         </mat-card-header>
         <mat-card-content>
-          <table mat-table [dataSource]="products" class="full-width">
+          <table mat-table [dataSource]="productsSource" class="full-width">
 
             <ng-container matColumnDef="sku">
               <th mat-header-cell *matHeaderCellDef>SKU</th>
@@ -88,7 +88,7 @@ import { Subscription } from 'rxjs';
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   user: UserInfo | null = null;
-  products: Product[] = [];
+  productsSource = new MatTableDataSource<Product>([]);
   reservations: InventoryReservation[] = [];
   connected = false;
   columns = ['sku', 'name', 'quantityOnHand'];
@@ -115,7 +115,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private loadProducts(): void {
     this.inventoryService.listProducts().subscribe({
-      next: products => this.products = products,
+      next: products => { this.productsSource.data = products; },
       error: err => this.snack.open('Failed to load inventory', 'Close', { duration: 4000 })
     });
   }
