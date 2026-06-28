@@ -34,6 +34,10 @@ public class InventoryReservationListener {
         log.info("Received reservation: orderId={}, status={}", event.orderId(), event.status());
 
         orderRepository.findById(event.orderId()).ifPresentOrElse(order -> {
+            if (order.getStatus() != OrderStatus.PENDING) {
+                log.info("Order {} already {}, skipping re-apply", order.getOrderId(), order.getStatus());
+                return;
+            }
             if (event.status() == InventoryReservationEvent.ReservationStatus.RESERVED) {
                 order.setStatus(OrderStatus.CONFIRMED);
             } else {
