@@ -53,22 +53,23 @@ Sprints 1-3 showed a recurring failure mode: a task report claims a check "Pass"
 
 To avoid a fourth round of this: when a task brief's acceptance criteria includes running a command or reproducing a result, **show the actual command output**, don't just assert "Pass/Fail." If the target platform/environment for a check isn't available to you (e.g. no Windows/PowerShell, no Docker/Podman daemon, no access to the specific JDK vendor a reviewer uses), **say so explicitly** rather than inferring success from whatever you can run instead. A stated limitation is useful information for the next reviewer; an unverified "Pass" that turns out false costs a whole sprint round.
 
-### Current status snapshot (2026-06-28 — re-check before relying on this)
-Sprint 1 (Track A: Order/Inventory domain pivot) was rejected by Codex — see `reviews/sprint-1-track-a-review.md`. Sprint 2 (Track A stabilization, tasks F-1–F-7) was rejected by Codex — all functional fixes (F-1–F-4, F-7) were confirmed correct in code, but the reviewer's Windows/OpenJ9 environment couldn't run the tests at all (`mvnw.cmd` missing, Mockito self-attach crash, @EmbeddedKafka JIT segfault). Sprint 3 (Track A close-out, tasks G-1–G-5) was rejected by Codex — `mvnw.cmd` was broken at runtime (only-script mode), inventory-service tests hard-failed without Docker, Angular advisories remained unresolved at 30 high. Sprint 4 (Track A close-out, round 2, tasks H-1–H-5) made real progress — `mvnw.cmd` fixed (classic jar mode), Angular upgraded to 21.2.x, Mockito/OpenJ9 fallback accepted — but did not fully close Track A. Sprint 5 (Track A close-out, round 3) was rejected by Codex — the Docker-optional test still reported `tests="0"` instead of `skipped="1"`, Angular lockfiles/config still diverged between UIs, and no browser smoke test existed. Sprint 6 (Track A close-out, round 4, tasks J-1–J-3) addresses the remaining gaps:
+### Current status snapshot (2026-06-28)
 
-- **J-1** — Docker check moved from class-level `@BeforeAll` (which suppressed test registration) into the test method via `Assumptions.assumeTrue`; Surefire XML now reports `tests="1" skipped="1"` when no Docker is reachable.
-- **J-2** — Both UIs normalized: lockfiles aligned (delete+reinstall from identical `package.json`), `angular.json` schematics/buildTarget blocks matched. `npm run build` passes in both. `npm audit`: 14 total, 6 high (all in transitive build tooling — `@angular-devkit/build-angular`, `http-proxy-middleware`, `piscina`, `vite`, `undici`; require Angular 22). Dev servers respond on 4200/4201; SPA routes confirmed.
-- **J-3** — This status snapshot updated to accurately reflect Sprint 4's real progress, Sprint 5's rejection, and Sprint 6's outcome per local verification, pending Codex re-review.
+**Current track:** Track B — hardening (unblocked as of 2026-06-28)  
+**Last approved sprint:** Sprint 13 — Track A approved by Codex on 2026-06-28  
+**Next sprint entry point:** Track B Sprint 1 — briefs not yet written; backlog in `docs/backlog/sprint-1.md` (B-1 through B-7)  
+**Pre-review command:** `bash scripts/pre-review-check.sh <sprint-number>`
 
-Sprint 7 (Track A close-out, round 5) narrowed to a single open task: two of its three planned tasks were closed by direct work this session (outside the Codex implement/review loop), leaving only the browser smoke test.
+**Active caveats (do not re-litigate each sprint — update only when signal changes):**
+- `npm audit --omit=dev` → 0 vulnerabilities in both UIs (production clean)
+- Full `npm audit` → 8 dev-tooling advisories per UI (piscina/vite under `@angular-devkit/build-angular`); no forward fix at Angular 22.0.4 floor
+- Angular webpack builder deprecation warning — not a blocker yet; track at next Angular version upgrade
+- Mockito/Java agent self-attach warning (OpenJ9 environments) — accepted, documented in Sprint 2 review
+- Testcontainers/Surefire shutdown warning in inventory-service — exit 0, noisy; clean up in B-3
 
-- **K-1 (resolved this session, commit `ab37adc`)** — Both UIs upgraded to Angular **22.0.2** / TypeScript **6.0.3** / zone.js **0.16.2** (the versions Sprint 6's review named as current). `npm run build` passes in both; lockfiles stay twin-consistent. A fresh `npm audit` now reports **10 vulnerabilities (4 high, 3 moderate, 3 low)** in each UI — down from Sprint 6's 14/6-high. The remaining 4 highs are all `piscina` (advisory `GHSA-x9g3-xrwr-cwfg`, prototype-pollution→RCE) transitive under `@angular-devkit/build-angular`; npm's only offered remediation is a force-downgrade to `@angular-devkit/build-angular@0.802.2` (a breaking regression, not a fix). They are unresolved-at-current-floor **build-tooling** advisories, not runtime exposure. `npm outdated` shows both UIs at or ahead of the stable `latest` dist-tag — nothing newer to move to.
-- **K-3 (resolved this session, commit `ab37adc`)** — The stale "Angular 18" text at `CLAUDE.md:12` and `:85` now reads "Angular 22"; the only remaining "Angular 18" mention is line 41's historical Dependency-currency note, which is correct as written.
-- **K-2 (closed — Sprint 13, commit `d93c617`)** — Full Playwright smoke test passes end-to-end. Track A gate cleared by Codex on 2026-06-28.
+**Track A history (for reference):** 13 sprints, Sprints 1–13, closed 2026-06-28. Full Playwright smoke test (login → order placement → Kafka saga → live status update → inventory decrement) passes against a non-empty local DB. See `docs/backlog/track-a-retro.md` for lessons learned.
 
-**Track A is closed.** Sprint 13 (Q-1: `data-testid="order-card"` + smoke test locator fix) was approved by Codex on 2026-06-28. The full Playwright smoke test passed end-to-end against a non-empty local DB. Track B hardening is now unblocked.
-
-All 4 Maven modules now have working `mvnw.cmd` (Windows) and `mvnw` (Unix) wrappers via `.mvn/wrapper/maven-wrapper.properties`. The Maven Enforcer plugin (`[21,22)`) fails fast if the active JDK is not Java 21.
+All 4 Maven modules have working `mvnw.cmd` (Windows) and `mvnw` (Unix) wrappers. Maven Enforcer requires Java 21 (`[21,22)`) and fails fast otherwise.
 
 ## Architecture
 

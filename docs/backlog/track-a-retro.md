@@ -129,21 +129,21 @@ Smoke tests must be idempotent across repeated runs. Selectors must distinguish 
 **Known-caveats table replaces per-sprint re-litigation.**  
 Standing caveats (npm dev-tooling advisories, Angular builder deprecation, Java agent warnings, Testcontainers shutdown noise) are documented once below. Handoffs reference the table; they don't re-argue whether each caveat is a blocker. The table is updated only when the signal changes.
 
-**Browser-required tasks are flagged explicitly in the brief.**  
-If no implementer or coordinator can run the UI in a browser, the brief says so and marks browser verification as Codex-only. The handoff does not claim a pass on that acceptance criterion — it says "Codex-only verification required."
+**"Codex-only browser verification" is a declaration, not an excuse.**  
+Handoffs must say one of two things about browser acceptance: "browser acceptance passed" (implementer or coordinator ran it) or "Codex-only browser verification required" (no implementer/coordinator browser access — Codex is the first real exercise of this path). Silently handing off browser-required work as "done" and letting Codex discover the failure is not acceptable.
 
-**Implementation agent choice is case-by-case.**  
-Default for Track B: Claude haiku agents (worktree-isolated) for mechanical tasks (targeted file edits, lockfile fixes, config changes), Claude sonnet/opus for logic-heavy work. OpenCode+DeepSeek remains an option when a task benefits from a genuinely different implementation approach or exploratory reasoning. The coordinator decides per task and notes the choice in the handoff. This removes the "copy-paste to get opencode to start" friction for routine tasks without losing the option for complex ones.
+**Implementation agent choice is case-by-case, with explicit triggers.**  
+Default for Track B: Claude haiku agents (worktree-isolated) for mechanical tasks, Claude sonnet/opus for logic-heavy work. Bring OpenCode+DeepSeek back only on a clear trigger: two failed implementation rounds on the same task, ambiguous architecture work, security- or performance-sensitive code, or when a second genuinely independent implementation approach has real value. The coordinator notes the agent choice in the handoff.
 
-**Context resilience is maintained actively.**  
-CLAUDE.md status snapshot is updated at the end of every sprint (not just when Track A milestones close). Memory files cover key decisions and workflow rules. Task briefs are self-contained enough that a fresh session can implement them without reading the full sprint history.
+**Context resilience: repo docs beat chat memory.**  
+CLAUDE.md is the canonical short current-state snapshot. It must always contain: current track, last approved sprint, active caveats, next sprint entry point, and the exact pre-review command. Updated at the end of every sprint. Task briefs remain self-contained. Memory files and chat context are supplements, not the source of truth.
 
 ### On closing the coordination loop (Dimitri's ask)
 
 The current loop — Claude writes handoff → Dimitri pastes to Codex → Codex writes review → Dimitri pastes back — has two manual steps that could be automated. Clean options in order of effort:
 
-1. **GitHub Actions notification (low effort, Track B B-5)** — when a `reviews/sprint-N-*.md` file is committed and pushed, a workflow step posts to Slack or a webhook. Codex and Claude both work from the repo; the CI event closes the loop without any new infrastructure.
-2. **Codex writes reviews directly to the repo via git** — if Codex has push access or creates PRs, the review file lands in the repo without a copy-paste step. The coordinator picks it up at the start of the next session by reading the file.
+1. **GitHub Actions notification (low effort, Track B B-5)** — when a `reviews/sprint-N-*.md` file is committed and pushed, a workflow step posts to Slack or a webhook. The CI event closes the loop without any new infrastructure.
+2. **Codex writes reviews directly to the repo via git** — constrained to `reviews/*` and doc-only retro files only; no source edits from the reviewer path. The coordinator picks it up at the start of the next session by reading the file.
 3. **The app itself (ironic path)** — wire a Kafka event or REST call when a review is ready; inventory-ui displays it. Fun, but adds real production risk to a coordination concern. Not recommended until the app is deployed and stable.
 
 Option 1 is the right Track B target. Option 2 is achievable now if Codex is willing to push directly. Option 3 is a Track C idea.
