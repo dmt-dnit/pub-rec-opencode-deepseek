@@ -75,7 +75,7 @@ import { Subscription } from 'rxjs';
           <span [style.color]="connected ? '#4caf50' : '#f44336'" style="margin-left:8px;font-size:14px">{{ connected ? 'Connected' : 'Disconnected' }}</span>
         </mat-card-header>
         <mat-card-content>
-          <mat-card *ngFor="let order of orders" style="margin-bottom:12px">
+          <mat-card *ngFor="let order of orders" style="margin-bottom:12px" data-testid="order-card">
             <mat-card-content>
               <div class="order-header">
                 <strong>{{ order.orderId.substring(0, 8) }}</strong>

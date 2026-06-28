@@ -80,9 +80,10 @@ test('smoke: order placement saga updates both dashboards', async ({ browser }, 
     const initialQty = parseInt(initialQtyText.trim(), 10);
 
     // Capture current order card count before placing so we can wait for exactly +1
-    const orderCards = orderPage
-      .locator('mat-card')
-      .filter({ has: orderPage.locator('.order-header') });
+    // data-testid="order-card" targets individual order cards only — avoids the
+    // descendant-matching trap where the outer Orders mat-card also satisfies
+    // filter({ has: .order-header }) because it wraps all order cards.
+    const orderCards = orderPage.locator('[data-testid="order-card"]');
     const initialOrderCount = await orderCards.count();
 
     // ---------------------------------------------------------------
