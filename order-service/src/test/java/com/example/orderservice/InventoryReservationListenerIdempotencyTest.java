@@ -27,7 +27,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @SpringBootTest
@@ -85,7 +85,7 @@ class InventoryReservationListenerIdempotencyTest {
         assertThat(updated.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
 
         ArgumentCaptor<OrderResponse> captor = ArgumentCaptor.forClass(OrderResponse.class);
-        verify(messagingTemplate, timeout(15000).atLeast(1))
+        verify(messagingTemplate, times(1))
                 .convertAndSend(eq("/topic/messages"), captor.capture());
         assertThat(captor.getValue().status()).isEqualTo(OrderStatus.CONFIRMED);
     }
