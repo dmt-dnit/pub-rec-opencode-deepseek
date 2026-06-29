@@ -22,7 +22,9 @@ Codex round-2 verdict (`reviews/sprint-16-track-b-round-2-review.md`) cleared ev
 
 **Fix (coordinator-direct CI config — flagged, like the Sprint 14 inline-build fix; the agent-worktree path has twice caused regressions on `.github/`):** replaced the `owasp-dependency-check` job with a **`snyk-security`** job — `snyk test --all-projects --severity-threshold=high` across all 4 Maven poms + both npm UIs in one fast run, no NVD pre-download; SARIF uploaded to the Security tab. Report-only first pass (`continue-on-error`) so the known dev-only Angular-toolchain CVEs (no forward fix at the 22.0.4 floor) don't red the gate. Decided with Dimitri (he uses Snyk at work; fits the showcase). Validated: `ci.yml` parses, 7 jobs, v5/v6 actions intact.
 
-**New admin action (Dimitri):** add a `SNYK_TOKEN` repo secret (free Snyk account). The `NVD_API_KEY` is now unused (harmless to leave). **Codex re-verify:** the `snyk-security` job runs and reports (live, post-push + token).
+**Admin action done (Dimitri):** `SNYK_TOKEN_CLAUDE_CODE_CLI` repo secret added (ci.yml reads it into the `SNYK_TOKEN` env). First runs 401'd on a bad token value; resolved with the Account-settings API token.
+
+**Live result — WORKING:** the `snyk-security` job (run `28386124599`) authenticated (`Organization: dmt-dnit`) and scanned all 7 projects in ~47s: `Tested 7 projects, no vulnerable paths were found` (auth-server 114 deps, order-service 132, inventory-service 133, shared-model 26, + 3 npm). Step exit 0 — a real pass, not just `continue-on-error`. `snyk test` scans production deps by default, so the dev-only Angular-toolchain CVEs (http-proxy-middleware etc.) are correctly excluded — consistent with `npm audit --omit=dev = 0`. Also bumped `codeql-action/upload-sarif` v3 → v4 (`f7e7f56`) to clear Node-20/v3-deprecation warnings on the SARIF upload.
 
 ## Commits (on `main`)
 
