@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -32,15 +32,13 @@ import static org.mockito.Mockito.verify;
 
 @SpringBootTest
 @EmbeddedKafka(partitions = 1,
-        topics = {"test-inv-events-idem"},
-        brokerProperties = {"listeners=PLAINTEXT://localhost:9095", "port=9095"})
+        topics = {"test-inv-events-idem"})
 @ActiveProfiles("test")
 @DirtiesContext
 class InventoryReservationListenerIdempotencyTest {
 
     @DynamicPropertySource
     static void registerProps(DynamicPropertyRegistry registry) {
-        registry.add("spring.kafka.bootstrap-servers", () -> "localhost:9095");
         registry.add("app.kafka.topic", () -> "test-order-events-idem");
         registry.add("app.kafka.listen-topic", () -> "test-inv-events-idem");
     }
@@ -51,7 +49,7 @@ class InventoryReservationListenerIdempotencyTest {
     @Autowired
     private OrderRepository orderRepository;
 
-    @MockBean
+    @MockitoBean
     private SimpMessagingTemplate messagingTemplate;
 
     @Test

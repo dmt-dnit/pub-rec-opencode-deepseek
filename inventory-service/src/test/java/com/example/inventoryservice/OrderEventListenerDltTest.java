@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
@@ -24,6 +24,8 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+
+import org.springframework.beans.factory.annotation.Value;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -40,15 +42,13 @@ import static org.mockito.Mockito.doThrow;
 
 @SpringBootTest
 @EmbeddedKafka(partitions = 1,
-        topics = {"test-order-dlt", "test-order-dlt.DLT"},
-        brokerProperties = {"listeners=PLAINTEXT://localhost:9094", "port=9094"})
+        topics = {"test-order-dlt", "test-order-dlt.DLT"})
 @ActiveProfiles("test")
 @DirtiesContext
 class OrderEventListenerDltTest {
 
     @DynamicPropertySource
     static void registerProps(DynamicPropertyRegistry registry) {
-        registry.add("spring.kafka.bootstrap-servers", () -> "localhost:9094");
         registry.add("app.kafka.topic", () -> "test-inv-dlt");
         registry.add("app.kafka.listen-topic", () -> "test-order-dlt");
     }
@@ -59,7 +59,7 @@ class OrderEventListenerDltTest {
     @Autowired
     private DltCaptor dltCaptor;
 
-    @MockBean
+    @MockitoBean
     private ReservationService reservationService;
 
     @TestConfiguration
@@ -70,7 +70,8 @@ class OrderEventListenerDltTest {
         }
 
         @Bean("testReservationContainerFactory")
-        ConcurrentKafkaListenerContainerFactory<String, InventoryReservationEvent> testReservationContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, InventoryReservationEvent> testReservationContainerFactory(
+                @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers) {
             JsonDeserializer<InventoryReservationEvent> deserializer =
                     new JsonDeserializer<>(InventoryReservationEvent.class);
             deserializer.setUseTypeHeaders(false);
@@ -80,7 +81,7 @@ class OrderEventListenerDltTest {
                     new ErrorHandlingDeserializer<>(deserializer);
 
             Map<String, Object> props = new HashMap<>();
-            props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9094");
+            props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
             props.put(ConsumerConfig.GROUP_ID_CONFIG, "test-group-reservations");
             props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 

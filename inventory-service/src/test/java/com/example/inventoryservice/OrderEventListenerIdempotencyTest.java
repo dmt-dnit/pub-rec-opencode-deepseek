@@ -24,6 +24,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
+import org.springframework.beans.factory.annotation.Value;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.HashMap;
@@ -34,15 +36,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @EmbeddedKafka(partitions = 1,
-        topics = {"test-order-events-idem"},
-        brokerProperties = {"listeners=PLAINTEXT://localhost:9094", "port=9094"})
+        topics = {"test-order-events-idem"})
 @ActiveProfiles("test")
 @DirtiesContext
 class OrderEventListenerIdempotencyTest {
 
     @DynamicPropertySource
     static void registerProps(DynamicPropertyRegistry registry) {
-        registry.add("spring.kafka.bootstrap-servers", () -> "localhost:9094");
         registry.add("app.kafka.topic", () -> "test-inv-events-idem");
         registry.add("app.kafka.listen-topic", () -> "test-order-events-idem");
     }
@@ -56,7 +56,8 @@ class OrderEventListenerIdempotencyTest {
     @TestConfiguration
     static class TestConfig {
         @Bean("testReservationContainerFactory")
-        ConcurrentKafkaListenerContainerFactory<String, InventoryReservationEvent> testReservationContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, InventoryReservationEvent> testReservationContainerFactory(
+                @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers) {
             JsonDeserializer<InventoryReservationEvent> deserializer =
                     new JsonDeserializer<>(InventoryReservationEvent.class);
             deserializer.setUseTypeHeaders(false);
@@ -66,7 +67,7 @@ class OrderEventListenerIdempotencyTest {
                     new ErrorHandlingDeserializer<>(deserializer);
 
             Map<String, Object> props = new HashMap<>();
-            props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9094");
+            props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
             props.put(ConsumerConfig.GROUP_ID_CONFIG, "test-group-reservations");
             props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 

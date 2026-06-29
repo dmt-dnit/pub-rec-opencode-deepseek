@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -28,15 +28,13 @@ import static org.mockito.Mockito.doThrow;
 
 @SpringBootTest
 @EmbeddedKafka(partitions = 1,
-        topics = {"test-inv-dlt", "test-inv-dlt.DLT"},
-        brokerProperties = {"listeners=PLAINTEXT://localhost:9095", "port=9095"})
+        topics = {"test-inv-dlt", "test-inv-dlt.DLT"})
 @ActiveProfiles("test")
 @DirtiesContext
 class InventoryReservationListenerDltTest {
 
     @DynamicPropertySource
     static void registerProps(DynamicPropertyRegistry registry) {
-        registry.add("spring.kafka.bootstrap-servers", () -> "localhost:9095");
         registry.add("app.kafka.topic", () -> "test-order-dlt");
         registry.add("app.kafka.listen-topic", () -> "test-inv-dlt");
     }
@@ -47,7 +45,7 @@ class InventoryReservationListenerDltTest {
     @Autowired
     private DltCaptor dltCaptor;
 
-    @MockBean
+    @MockitoBean
     private OrderRepository orderRepository;
 
     @TestConfiguration

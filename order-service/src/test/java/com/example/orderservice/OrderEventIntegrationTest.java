@@ -9,9 +9,9 @@ import com.example.sharedmodel.InventoryReservationEvent;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -34,8 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @EmbeddedKafka(
         partitions = 1,
-        topics = "test-integration-topic",
-        brokerProperties = {"listeners=PLAINTEXT://localhost:9093", "port=9093"}
+        topics = "test-integration-topic"
 )
 @AutoConfigureMockMvc(addFilters = false)
 @ActiveProfiles("test")
@@ -55,7 +54,7 @@ class OrderEventIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private SimpMessagingTemplate messagingTemplate;
 
     @Test

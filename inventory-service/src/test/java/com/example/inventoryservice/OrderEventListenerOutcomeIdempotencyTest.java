@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
@@ -28,6 +28,8 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+
+import org.springframework.beans.factory.annotation.Value;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -49,25 +51,23 @@ import static org.mockito.Mockito.verify;
  */
 @SpringBootTest
 @EmbeddedKafka(partitions = 1,
-        topics = {"test-order-events-outcome", "test-reservations-out"},
-        brokerProperties = {"listeners=PLAINTEXT://localhost:9095", "port=9095"})
+        topics = {"test-order-events-outcome", "test-reservations-out"})
 @ActiveProfiles("test")
 @DirtiesContext
 class OrderEventListenerOutcomeIdempotencyTest {
 
     @DynamicPropertySource
     static void registerProps(DynamicPropertyRegistry registry) {
-        registry.add("spring.kafka.bootstrap-servers", () -> "localhost:9095");
         registry.add("app.kafka.topic", () -> "test-inv-events-outcome");
         registry.add("app.kafka.listen-topic", () -> "test-order-events-outcome");
     }
 
     /** Replace real publisher with a mock — no actual Kafka send, but calls are trackable. */
-    @MockBean
+    @MockitoBean
     private InventoryEventPublisher publisher;
 
     /** Replace real WebSocket template with a mock — calls are trackable. */
-    @MockBean
+    @MockitoBean
     private SimpMessagingTemplate messagingTemplate;
 
     @Autowired
@@ -87,7 +87,8 @@ class OrderEventListenerOutcomeIdempotencyTest {
     @TestConfiguration
     static class TestConfig {
         @Bean("testReservationContainerFactory")
-        ConcurrentKafkaListenerContainerFactory<String, InventoryReservationEvent> testReservationContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, InventoryReservationEvent> testReservationContainerFactory(
+                @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers) {
             JsonDeserializer<InventoryReservationEvent> deserializer =
                     new JsonDeserializer<>(InventoryReservationEvent.class);
             deserializer.setUseTypeHeaders(false);
@@ -97,7 +98,7 @@ class OrderEventListenerOutcomeIdempotencyTest {
                     new ErrorHandlingDeserializer<>(deserializer);
 
             Map<String, Object> props = new HashMap<>();
-            props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9095");
+            props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
             props.put(ConsumerConfig.GROUP_ID_CONFIG, "test-group-reservations-outcome");
             props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
