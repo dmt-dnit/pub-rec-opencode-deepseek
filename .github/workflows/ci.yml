@@ -202,7 +202,7 @@ jobs:
       - name: Snyk test — all projects (4 Maven modules + 2 npm UIs), HIGH+
         continue-on-error: true   # report-only; vulns above threshold don't fail the build yet
         env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN_CLAUDE_CODE_CLI }}
         run: snyk test --all-projects --severity-threshold=high --sarif-file-output=snyk.sarif
 
       - name: Upload Snyk results to the GitHub Security tab
