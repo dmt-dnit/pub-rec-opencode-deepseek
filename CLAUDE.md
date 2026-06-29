@@ -89,7 +89,7 @@ This is the compact ruleset distilled from the Track A retrospective. Full conte
 
 **Active caveats (do not re-litigate each sprint — update only when signal changes):**
 - `npm audit --omit=dev` → 0 vulnerabilities in both UIs (production clean)
-- Full `npm audit` → 8 dev-tooling advisories per UI (piscina/vite under `@angular-devkit/build-angular`); no forward fix at Angular 22.0.4 floor
+- Full `npm audit` → 8 dev-tooling advisories per UI (3 low/3 mod/2 high) under `@angular-devkit/build-angular`'s build/dev-server chain — incl. **http-proxy-middleware High** (CRLF injection in `fixRequestBody`, dev-server proxy only), webpack-dev-server, @babel/core, uuid. **Dev-only — not in the shipped bundle; production audit = 0.** No forward fix: Angular **22.0.4 is the latest on the registry** and is itself in the vulnerable range; the only npm auto-fix is a downgrade to Angular 21 (rejected). Recheck when Angular ships a patched 22.x. Surfaced via Dependabot (SEC-1, alerts enabled 2026-06-29) — dev-only alerts there are expected, not blockers
 - Angular webpack builder deprecation warning — not a blocker yet; track at next Angular version upgrade
 - Mockito/Java agent self-attach warning (OpenJ9 environments) — accepted, documented in Sprint 2 review
 - Testcontainers/Surefire shutdown warning in inventory-service — exit 0, noisy; clean up in B-3
