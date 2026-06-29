@@ -14,32 +14,21 @@ The system itself is recognisable enterprise territory: JWT-based SSO, a Kafka c
 
 ## The agent workflow
 
-Three roles, no central orchestrator:
+Three roles, no central orchestrator. **Claude Code is the coordinator, and it opens and closes every loop** — it writes the briefs, decides who implements each task, drives that implementer, and verifies the result before a reviewer (or human) ever sees it.
 
+```mermaid
+flowchart TD
+    BRIEF["Claude Code — coordinator<br/>writes task briefs · sizes the sprint · checks dependency currency"]
+    IMPL["Implementers<br/>opencode + DeepSeek, or Claude worktree agents<br/>(coordinator picks one per task and drives it)<br/>isolated git worktree → commit + self-report"]
+    VERIFY["Claude Code — coordinator<br/>routes & steers each task; intervenes when an implementer stalls<br/>verifies by reading the actual diff AND re-running the tests<br/>never trusts a self-report · writes the evidence handoff · runs pre-review-check.sh"]
+    REVIEW["Codex — reviewer<br/>independent re-verification from Windows/PowerShell<br/>verdict: accept, or reject with specific blockers"]
+    BRIEF --> IMPL --> VERIFY --> REVIEW
+    REVIEW -->|accept| NEXT["next sprint / track starts"]
+    REVIEW -->|reject| BACKLOG["blockers become the next sprint's backlog"]
+    BACKLOG -.-> BRIEF
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│  opencode + DeepSeek (implementers)                              │
-│  Each picks up one task brief, works in an isolated git worktree │
-│  and produces a commit + self-report.                            │
-└────────────────────────┬─────────────────────────────────────────┘
-                         │ code changes + self-report
-                         ▼
-┌──────────────────────────────────────────────────────────────────┐
-│  Claude Code (coordinator)                                       │
-│  Reads actual diffs — never trusts self-reports. Writes a        │
-│  handoff doc with per-task evidence. Runs pre-review-check.sh.   │
-└────────────────────────┬─────────────────────────────────────────┘
-                         │ handoff doc
-                         ▼
-┌──────────────────────────────────────────────────────────────────┐
-│  Codex (reviewer)                                                │
-│  Independent re-verification from Windows/PowerShell. Writes a  │
-│  verdict: accept or reject with specific blockers.               │
-└────────────────────────┬─────────────────────────────────────────┘
-                         │ accept → next sprint starts
-                         │ reject → blockers become next sprint's backlog
-                         └──────────────────────────────────────────┘
-```
+
+The coordinator is not a passive router. It **chooses the implementer per task** — read-verifiable changes (a CI workflow, a selector) go to a Claude worktree agent; subtle-correctness work (transactional idempotency, concurrency) goes to opencode + DeepSeek for a genuinely independent second implementation. It **drives both** kinds from the same machine (spawning Claude subagents, or running DeepSeek headless via `opencode run`), **intervenes mid-run** when an implementer misdiagnoses a failure (e.g. resuming a stuck DeepSeek session with a precise root-cause hint), and **re-runs the real test suite itself** rather than trusting any "Pass" it's handed. The reviewer (Codex) stays independent regardless of who implemented. Coordinator-direct edits are reserved for trivial docs and CI metadata — never logic.
 
 Sprint artifacts: `docs/backlog/sprint-N.md` (overview), `docs/backlog/tasks/sprint-N/<ID>-<slug>.md` (per-task briefs), `docs/backlog/sprint-N-handoff.md` (coordinator's evidence), `reviews/sprint-N-track-X-review.md` (Codex verdict).
 
@@ -82,6 +71,12 @@ sequenceDiagram
 | `inventory-service` | 8081 | Spring Boot: stock management, Kafka saga consumer/publisher |
 | `order-ui` | 4200 | Angular 22 SPA: place orders, live status feed |
 | `inventory-ui` | 4201 | Angular 22 SPA: SKU table, live reservation feed |
+
+---
+
+## Continuous integration
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on every push to `main` and every PR: `shared-model` builds and tests first as a fail-fast gate, then `auth-server`, `order-service`, and `inventory-service` build and test in parallel (each builds `shared-model` inline into its local Maven repo), and both Angular UIs build. Java is pinned to 21, Node to 22. A broken test in one module fails only that module's job.
 
 ---
 
