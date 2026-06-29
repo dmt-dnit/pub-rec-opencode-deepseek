@@ -35,3 +35,29 @@ This sprint is a credible "agents still need independent review" moment. The imp
 
 - Fix the Unix Maven wrapper executable bits or invoke the wrapper through `bash`.
 - Decide whether B-1 should require full outcome idempotency for rejected inventory reservations, not only no double-decrement for successful reservations.
+
+## Round 2 Addendum
+
+Date: 2026-06-29
+Source review: `reviews/sprint-14-track-b-round-2-review.md`
+
+Sprint 14 is now better demo material because it has a full failure-to-green arc:
+
+- Codex rejected round 1 for a target-platform CI defect: Unix `mvnw` files were tracked as `100644`, so Ubuntu runners would fail before Maven started.
+- Round 2 fixed the executable bits (`100755`), then hit a second real CI problem: the shared-model artifact hand-off failed in live Actions.
+- The durable fix was to stop transferring the Maven local repository between jobs and instead build `shared-model` inline inside each downstream Maven job.
+- Live Actions run `28354413116` for commit `f5d81b4` passed with all six jobs green: `shared-model`, `auth-server`, `order-service`, `inventory-service`, `order-ui`, and `inventory-ui`.
+- The inventory idempotency gap was also closed for normal duplicate delivery: duplicate success and duplicate rejection now publish exactly once and push exactly one WebSocket feed item.
+
+This gives a strong conference story: the agent workflow did not just build CI, it caught two CI design mistakes before treating the gate as trustworthy. The first mistake was local/Windows vs Linux metadata. The second was an apparently reasonable artifact-transfer design that failed only in the real hosted runner.
+
+Remaining nuance to mention honestly:
+
+- The workflow is green but not dependency-current: current GitHub tags are newer majors than the `actions/*@v4` pins. Treat the Node 20 deprecation warning as a small follow-up task, not as a Sprint 14 failure.
+- The inventory fix is outcome-idempotent for normal duplicate delivery, but not an outbox/transactional-publish design. Strong crash-safe DB+Kafka exactly-once semantics remain future hardening.
+
+Suggested visual evidence:
+
+- Screenshot the green GitHub Actions run `28354413116` with the six job boxes visible.
+- Screenshot the review finding from `reviews/sprint-14-track-b-review.md` next to the green round-2 review verdict to show the process improvement loop.
+- If using terminal footage, replay `git ls-files --stage auth-server/mvnw inventory-service/mvnw order-service/mvnw shared-model/mvnw` showing `100755`.

@@ -82,8 +82,8 @@ This is the compact ruleset distilled from the Track A retrospective. Full conte
 ### Current status snapshot (2026-06-28)
 
 **Current track:** Track B — hardening (unblocked as of 2026-06-28)  
-**Last approved sprint:** Sprint 13 — Track A approved by Codex on 2026-06-28  
-**Next sprint entry point:** Sprint 14 (Track B Sprint 1) — **round 2 complete, B-5 live CI green, awaiting Codex re-review.** Round 1 rejected (`reviews/sprint-14-track-b-review.md`): P1 `mvnw` non-executable (blocking), P2 outcome-idempotency. Fixed: P1 `adaf54e` (chmod +x → 100755), P2 `a6d71b6` (`reserve()`→Optional no-op + reject-marker + `OutcomeIdempotencyTest`). After push, first live Actions run failed on the shared-model artifact hand-off → fixed `f5d81b4` (inline shared-model build per job, no artifact); **all 6 CI jobs green on push.** B-5 `5ba89cf`, B-1 round 1 `9a69ce7`+`3f8d64b`. Handoff: `docs/backlog/sprint-14-handoff.md`. Remaining Track B backlog (`docs/backlog/sprint-1.md` §Track B): B-2, B-3, B-4, B-6 — later sprints (B-6 = Docker Compose, its own sprint). B-7 already complete.  
+**Last approved sprint:** Sprint 14 (Track B Sprint 1) — approved by Codex on 2026-06-29 (round 2, `reviews/sprint-14-track-b-round-2-review.md`); live CI green (Actions run `28354413116`, all 6 jobs). Delivered B-5 (CI pipeline) + B-1 (retry/DLQ/idempotency). Round-1 blockers P1 (mvnw exec bit `adaf54e`) + P2 (outcome-idempotency `a6d71b6`) closed; first live run's artifact-handoff failure fixed inline `f5d81b4`.  
+**Next sprint entry point:** Sprint 15 (Track B Sprint 2) — briefs not yet written. Backlog: remaining Track B (`docs/backlog/sprint-1.md` §Track B) B-2 (observability), B-3 (Testcontainers + contract tests), B-4 (OpenAPI), B-6 (Docker Compose, likely its own sprint) — **plus 3 non-blocking follow-ups from the Sprint 14 round-2 review** (`reviews/sprint-14-track-b-round-2-review.md`): (1) **CI dependency currency** — bump `actions/checkout` v4→v7, `setup-java` v4→v5, `setup-node` v4→v6, verify via live run; (2) **inventory exactly-once publish hardening** — outbox / transactional-producer / persisted publish-state (current no-op idempotency is crash-safe only for normal duplicate delivery); (3) **server-side vuln visibility** — enable Dependabot alerts and/or add a Maven vuln scan (e.g. OWASP dependency-check) with a fail/pass policy. Apply the dependency-currency check (cadence step 1) when scoping. B-7 already complete.  
 **Pre-review command:** `bash scripts/pre-review-check.sh <sprint-number>`
 
 **Active caveats (do not re-litigate each sprint — update only when signal changes):**
@@ -92,7 +92,7 @@ This is the compact ruleset distilled from the Track A retrospective. Full conte
 - Angular webpack builder deprecation warning — not a blocker yet; track at next Angular version upgrade
 - Mockito/Java agent self-attach warning (OpenJ9 environments) — accepted, documented in Sprint 2 review
 - Testcontainers/Surefire shutdown warning in inventory-service — exit 0, noisy; clean up in B-3
-- GitHub Actions Node 20 deprecation: `actions/checkout@v4` + `setup-java@v4` auto-forced onto Node 24, jobs pass; revisit when those actions publish Node-24 majors (added Sprint 14)
+- GitHub Actions Node 20 deprecation: `actions/checkout@v4`/`setup-java@v4`/`setup-node@v4` auto-forced onto Node 24, jobs pass. Newer majors exist (checkout v7, setup-java v5, setup-node v6) — scheduled as Sprint 15 follow-up 1 (added Sprint 14)
 
 **Track A history (for reference):** 13 sprints, Sprints 1–13, closed 2026-06-28. Full Playwright smoke test (login → order placement → Kafka saga → live status update → inventory decrement) passes against a non-empty local DB. See `docs/backlog/track-a-retro.md` for lessons learned.
 
