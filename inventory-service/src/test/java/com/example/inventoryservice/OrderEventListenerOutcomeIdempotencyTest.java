@@ -21,7 +21,7 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
-import org.springframework.kafka.support.serializer.JsonDeserializer;
+import org.springframework.kafka.support.serializer.JacksonJsonDeserializer;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.test.annotation.DirtiesContext;
@@ -89,8 +89,8 @@ class OrderEventListenerOutcomeIdempotencyTest {
         @Bean("testReservationContainerFactory")
         ConcurrentKafkaListenerContainerFactory<String, InventoryReservationEvent> testReservationContainerFactory(
                 @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers) {
-            JsonDeserializer<InventoryReservationEvent> deserializer =
-                    new JsonDeserializer<>(InventoryReservationEvent.class);
+            JacksonJsonDeserializer<InventoryReservationEvent> deserializer =
+                    new JacksonJsonDeserializer<>(InventoryReservationEvent.class);
             deserializer.setUseTypeHeaders(false);
             deserializer.addTrustedPackages("com.example.sharedmodel");
 
