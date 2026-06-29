@@ -2,7 +2,6 @@ package com.example.inventoryservice.receiver;
 
 import com.example.inventoryservice.publisher.InventoryEventPublisher;
 import com.example.inventoryservice.service.ReservationService;
-import com.example.sharedmodel.InventoryReservationEvent;
 import com.example.sharedmodel.OrderPlacedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,8 +31,9 @@ public class OrderEventListener {
         log.info("Received OrderPlacedEvent: orderId={}, customerEmail={}, items={}",
                 event.orderId(), event.customerEmail(), event.items());
 
-        InventoryReservationEvent outcome = reservationService.reserve(event);
-        publisher.publish(outcome);
-        messagingTemplate.convertAndSend("/topic/messages", outcome);
+        reservationService.reserve(event).ifPresent(outcome -> {
+            publisher.publish(outcome);
+            messagingTemplate.convertAndSend("/topic/messages", outcome);
+        });
     }
 }

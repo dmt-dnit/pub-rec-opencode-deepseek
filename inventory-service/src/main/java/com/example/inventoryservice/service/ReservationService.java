@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Optional;
 
 @Service
 public class ReservationService {
@@ -29,26 +30,25 @@ public class ReservationService {
     }
 
     @Transactional
-    public InventoryReservationEvent reserve(OrderPlacedEvent order) {
-        if (processedOrderRepository.existsById(order.orderId())) {
-            log.info("Order {} already processed, skipping stock mutation", order.orderId());
-            return new InventoryReservationEvent(
-                    order.orderId(),
-                    InventoryReservationEvent.ReservationStatus.RESERVED,
-                    "Already processed",
-                    Instant.now()
-            );
+    public Optional<InventoryReservationEvent> reserve(OrderPlacedEvent order) {
+        String orderId = order.orderId();
+
+        if (processedOrderRepository.existsById(orderId)) {
+            log.info("Order {} already processed — no-op (outcome-idempotent)", orderId);
+            return Optional.empty();
         }
 
         for (OrderItem item : order.items()) {
             Product product = productRepository.findById(item.sku()).orElse(null);
             if (product == null || product.getQuantityOnHand() < item.quantity()) {
-                return new InventoryReservationEvent(
-                        order.orderId(),
+                InventoryReservationEvent rejected = new InventoryReservationEvent(
+                        orderId,
                         InventoryReservationEvent.ReservationStatus.REJECTED,
                         "Insufficient stock for " + item.sku(),
                         Instant.now()
                 );
+                processedOrderRepository.save(new ProcessedOrder(orderId));
+                return Optional.of(rejected);
             }
         }
 
@@ -58,13 +58,13 @@ public class ReservationService {
             productRepository.save(product);
         }
 
-        processedOrderRepository.save(new ProcessedOrder(order.orderId()));
+        processedOrderRepository.save(new ProcessedOrder(orderId));
 
-        return new InventoryReservationEvent(
-                order.orderId(),
+        return Optional.of(new InventoryReservationEvent(
+                orderId,
                 InventoryReservationEvent.ReservationStatus.RESERVED,
                 null,
                 Instant.now()
-        );
+        ));
     }
 }
