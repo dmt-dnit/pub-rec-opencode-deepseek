@@ -4,6 +4,18 @@
 **Theme:** finish the Boot-4 migration + API docs + server-side vuln visibility.
 **Tasks:** SB-3 (Boot-4 cleanup), B-4 (OpenAPI), SEC-1 (vuln scanning). All verified by reading diffs + **re-running `mvnw verify` myself**.
 
+## Round 2 (2026-06-29) — addresses Codex rejection `reviews/sprint-16-track-b-review.md`
+
+Codex caught a real coordinator integration error + a Swagger gap. Both fixed in `2852d35`:
+
+- **P1 — SB-3 not actually on the 3 services.** auth/order/inventory had reverted to **4.0.7 + classic bridge + Jackson-2** while only shared-model was 4.1.0. Cause: when integrating B-4 I ran `git checkout <B-4-branch> -- <service poms>`, but B-4's agent worktree branched from a **stale base (pre-SB-3)**, so its whole-file poms carried the old 4.0.7+shim content + springdoc — overwriting SB-3's pom changes. My "combined verify" passed because 4.0.7+shims+springdoc still builds; I checked build-green but **not the pom version after the file-take.** Fix: restored the 3 service poms to the SB-3 state (`a943818`: 4.1.0, `spring-boot-kafka`, `webmvc-test`, no classic, no jackson2 jsr310) and re-layered springdoc 3.0.3. (Lesson banked: apply a stale-base agent's *diff*, not its whole file; verify post-integration *state*, not just build-green.)
+- **P2 — Swagger `/v3/api-docs` 401** (auth-server, which ends `anyRequest().authenticated()`). The permit only had `/v3/api-docs/**`, which doesn't match the exact path. Added `/v3/api-docs` + `/v3/api-docs.yaml` to the permit in all 3 `SecurityConfig`s.
+- **OWASP job** was `in_progress` at review time and `NVD_API_KEY` was set mid-review — re-run now completes; still `continue-on-error` (report-only) by design.
+
+**Round-2 coordinator verification (my own `mvnw verify`, Java 21):** auth `BUILD SUCCESS`; order `Tests run: 6, Failures: 0, Errors: 0`; inventory `Tests run: 5, Failures: 0, Errors: 0, Skipped: 1`. State re-checked explicitly: 3 services on **4.1.0**, `starter-classic`/`jackson-datatype-jsr310` = 0, springdoc present, SB-3 Jackson-3 yml serde intact, exact `/v3/api-docs` permit in all 3.
+
+**Codex re-verify:** containerized smoke (already passed r1) + now `/v3/api-docs` returns 200 on auth-server + the OWASP job completing with the key. Dependabot alerts now enabled (you confirmed HTTP 204).
+
 ## Commits (on `main`)
 
 | SHA | Task | Summary |
