@@ -34,4 +34,6 @@ The round-2 blocker is fixed. The failed OWASP Dependency-Check job was replaced
 
 The Snyk job is still configured as report-only with `continue-on-error`. That does not block Sprint 16 because this live run exits 0 and proves the scanner works, but Track B should decide later whether to turn it into a hard gate once the dev-only Angular tooling CVE policy is settled.
 
+After pushing the review commit, GitHub reported 14 Dependabot vulnerabilities on the default branch: 2 high, 8 moderate, and 4 low. Treat this as a follow-up dependency/security planning item for a later sprint; it does not change the Sprint 16 clearing verdict because the Snyk production-dependency gate passed and the Dependabot alert set is broader than this sprint's acceptance criteria.
+
 Generated Playwright artifacts and review-created backend containers were cleaned up. The pre-existing Angular dev servers on ports 4200 and 4201 were reused and left running.
