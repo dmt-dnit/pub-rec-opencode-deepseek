@@ -16,6 +16,24 @@
 #   each have their own `needs: shared-model`. A test failure in one module fails only that job;
 #   the other two jobs continue and report independently. `needs: shared-model` is kept as a
 #   fail-fast gate (shared-model's own tests must pass before downstream jobs run).
+#
+# Security scanning: a dedicated `owasp-dependency-check` job runs the OWASP Dependency-Check
+#   Maven plugin across all four Maven modules (invoked via plugin goal on the command line —
+#   no pom.xml changes required). Threshold: fail on CVSS >= 7 (High/Critical).
+#   The job is `continue-on-error: true` in this first iteration (report-only) because:
+#     (a) The NVD database download is slow/rate-limited without an API key.
+#     (b) The NVD API key must be added by a repo admin before the scan is reliable.
+#   Once the NVD_API_KEY secret is in place and the DB cache is stable, remove
+#   `continue-on-error` to promote this job to a blocking gate.
+#
+# ADMIN ACTION REQUIRED (Dimitri):
+#   1. NVD API key — add NVD_API_KEY as a repository secret
+#      (Settings → Secrets and variables → Actions → New repository secret).
+#      Without it the plugin falls back to public NVD feeds (rate-limited, slow, may
+#      time out on first run). Free key: https://nvd.nist.gov/developers/request-an-api-key
+#   2. Dependabot alerts — enable in repository settings
+#      (Settings → Security → Code security → Dependabot alerts → Enable).
+#      .github/dependabot.yml is now committed but alerts require the repo-level toggle.
 
 name: CI
 
@@ -139,3 +157,96 @@ jobs:
 
       - name: Install and build inventory-ui
         run: cd inventory-ui && npm ci && npm run build
+
+  # ── 4. OWASP Dependency-Check (server-side CVE scan) ─────────────────────────
+  #
+  # Policy: fail on CVSS >= 7 (High/Critical). Report-only in this first iteration
+  # (`continue-on-error: true`). Promote to blocking once NVD_API_KEY is set and
+  # the NVD DB cache is stable (remove continue-on-error).
+  #
+  # Each Maven module is scanned independently via the plugin goal invoked on the
+  # command line — no pom.xml changes. shared-model is installed inline so
+  # downstream modules can resolve it during the scan's dependency resolution.
+  #
+  # NVD DB is cached under ~/.owasp/dependency-check-data keyed on runner OS +
+  # all pom.xml hashes. The cache restores stale data if the exact key misses,
+  # which limits full re-downloads to pom changes or weekly cache expiry.
+  owasp-dependency-check:
+    name: OWASP Dependency-Check (CVSS >= 7 threshold, report-only)
+    runs-on: ubuntu-latest
+    # NOT listed in `needs` of any other job — scan hiccups cannot mask test failures.
+    # continue-on-error: true until NVD_API_KEY is added and the cache is stable.
+    # To promote to blocking: remove the line below and re-push.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Java 21 (Temurin)
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Cache OWASP NVD database
+        uses: actions/cache@v4
+        with:
+          path: ~/.owasp/dependency-check-data
+          key: owasp-nvd-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            owasp-nvd-${{ runner.os }}-
+
+      - name: Install shared-model (needed for downstream module dependency resolution)
+        run: cd shared-model && ./mvnw --batch-mode -q -DskipTests install
+
+      - name: Scan shared-model
+        run: |
+          cd shared-model && ./mvnw --batch-mode \
+            org.owasp:dependency-check-maven:check \
+            -DfailBuildOnCVSS=7 \
+            -DdataDirectory=$HOME/.owasp/dependency-check-data \
+            -DnvdApiKey=${{ secrets.NVD_API_KEY }} \
+            -Dformat=HTML \
+            -DprettyPrint=true
+
+      - name: Scan auth-server
+        run: |
+          cd auth-server && ./mvnw --batch-mode \
+            org.owasp:dependency-check-maven:check \
+            -DfailBuildOnCVSS=7 \
+            -DdataDirectory=$HOME/.owasp/dependency-check-data \
+            -DnvdApiKey=${{ secrets.NVD_API_KEY }} \
+            -Dformat=HTML \
+            -DprettyPrint=true
+
+      - name: Scan order-service
+        run: |
+          cd order-service && ./mvnw --batch-mode \
+            org.owasp:dependency-check-maven:check \
+            -DfailBuildOnCVSS=7 \
+            -DdataDirectory=$HOME/.owasp/dependency-check-data \
+            -DnvdApiKey=${{ secrets.NVD_API_KEY }} \
+            -Dformat=HTML \
+            -DprettyPrint=true
+
+      - name: Scan inventory-service
+        run: |
+          cd inventory-service && ./mvnw --batch-mode \
+            org.owasp:dependency-check-maven:check \
+            -DfailBuildOnCVSS=7 \
+            -DdataDirectory=$HOME/.owasp/dependency-check-data \
+            -DnvdApiKey=${{ secrets.NVD_API_KEY }} \
+            -Dformat=HTML \
+            -DprettyPrint=true
+
+      - name: Upload scan reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: owasp-dependency-check-reports
+          path: |
+            shared-model/target/dependency-check-report.html
+            auth-server/target/dependency-check-report.html
+            order-service/target/dependency-check-report.html
+            inventory-service/target/dependency-check-report.html
+          if-no-files-found: warn

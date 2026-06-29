@@ -1,0 +1,97 @@
+# Dependabot configuration for pub-rec-opencode-deepseek
+#
+# Covers:
+#   - 4 Maven modules (shared-model, auth-server, order-service, inventory-service)
+#   - 2 npm UIs (order-ui, inventory-ui)
+#   - GitHub Actions (action version pins in .github/workflows/)
+#
+# All entries run on a weekly schedule. Dependabot opens PRs for both version
+# updates and security advisories on the configured schedule.
+#
+# ADMIN ACTION REQUIRED (Dimitri):
+#   Dependabot ALERTS (passive, no PR) are separate from version-update PRs.
+#   They require a repo-level toggle that cannot be set from code:
+#     Settings → Security → Code security → Dependabot alerts → Enable
+#   Codex noted alerts were disabled. Enable that toggle to get alert
+#   notifications for transitive CVEs before they reach a scheduled scan.
+
+version: 2
+updates:
+
+  # ── Maven modules ────────────────────────────────────────────────────────────
+  # Build order: shared-model must be installed before the other three can
+  # compile, but Dependabot treats each directory independently.
+
+  - package-ecosystem: maven
+    directory: /shared-model
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - java
+
+  - package-ecosystem: maven
+    directory: /auth-server
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - java
+
+  - package-ecosystem: maven
+    directory: /order-service
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - java
+
+  - package-ecosystem: maven
+    directory: /inventory-service
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - java
+
+  # ── npm UIs ──────────────────────────────────────────────────────────────────
+
+  - package-ecosystem: npm
+    directory: /order-ui
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - javascript
+
+  - package-ecosystem: npm
+    directory: /inventory-ui
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - javascript
+
+  # ── GitHub Actions ────────────────────────────────────────────────────────────
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - github-actions
