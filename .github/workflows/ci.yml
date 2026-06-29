@@ -20,7 +20,7 @@
 # Security scanning: a dedicated `snyk-security` job runs `snyk test --all-projects`
 #   across all 4 Maven modules + both npm UIs (no pom.xml changes). Threshold: fail on
 #   HIGH+ severity; report-only first pass (`continue-on-error: true`) — see the job's
-#   header comment. Requires the SNYK_TOKEN repo secret. (Replaced OWASP Dependency-Check,
+#   header comment. Requires the SNYK_TOKEN_CLAUDE_CODE_CLI repo secret. (Replaced OWASP Dependency-Check,
 #   whose full-NVD-database download was too slow/flaky for CI.)
 #
 # ADMIN ACTION REQUIRED (Dimitri):
@@ -168,7 +168,7 @@ jobs:
   # download made it impractical in CI. shared-model is installed inline so the service
   # poms resolve com.example:shared-model. Results upload as SARIF to the Security tab.
   #
-  # Requires repo secret SNYK_TOKEN (free Snyk account → repo Settings → Secrets → Actions).
+  # Requires repo secret SNYK_TOKEN_CLAUDE_CODE_CLI (free Snyk account → repo Settings → Secrets → Actions).
   snyk-security:
     name: Snyk SCA (HIGH+ threshold, report-only)
     runs-on: ubuntu-latest
