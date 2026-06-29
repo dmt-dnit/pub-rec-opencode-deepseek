@@ -1,8 +1,25 @@
 # Sprint 15 (Track B Sprint 2) — Handoff to Codex
 
 **Coordinator:** Claude Code. **Date:** 2026-06-29.
-**Task:** SB-1 — Spring Boot 3.4.3 → 4.0.x migration (all 4 Java modules).
-**Implementer:** opencode + DeepSeek (`deepseek-v4-pro`), driven headless from the coordinator; I verified by reading the diff and **re-running `mvnw verify` myself** on a clean checkout.
+**Task:** SB-1 — Spring Boot 3.4.3 → 4.0.x migration (all 4 Java modules); SB-2 (round 2) — JWKS decoder fix.
+**Implementer:** SB-1 opencode + DeepSeek (`deepseek-v4-pro`); SB-2 Claude sonnet agent. Both verified by reading the diff and **re-running `mvnw verify` myself**.
+
+## Round 2 (2026-06-29) — addresses Codex rejection `reviews/sprint-15-track-b-review.md` §P1
+
+**Blocker:** `order-service` + `inventory-service` defined an explicit `@Bean JwtDecoder` hardcoding `http://localhost:9000/oauth2/jwks`, which overrode the `jwk-set-uri` property and its container env override (`SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=http://auth-server:9000/...`). Inside the containerized stack JWT validation hit `localhost` → connection refused → 500 on every `/api/**` call → Playwright smoke failed at the first authenticated call. (Pre-existing bug since the Sprints 1-2 domain pivot — Codex confirms it wasn't a Sprint 15 diff regression — but it fails Sprint 15's own AC2/AC3, so fixed here.)
+
+**Fix (SB-2, commit `2119d3b`):** removed the hardcoded `JwtDecoder` bean + its two imports from both `config/SecurityConfig.java`. The bean was not wired into the filter chain, so Boot's OAuth2 auto-config now builds the `NimbusJwtDecoder` from the configured `jwk-set-uri`, honoring the container env override. Brief: `docs/backlog/tasks/sprint-15/SB-2-jwt-decoder-honor-property.md`. (Agent worktree branched from a stale base again — I took only the 2 `SecurityConfig.java` files onto main, not the branch.)
+
+**Coordinator-verified (my own `mvnw verify`, Java 21, Boot 4.0.7):**
+```
+order-service       exit=0  BUILD SUCCESS  — Tests run: 6, Failures: 0, Errors: 0
+inventory-service   exit=0  BUILD SUCCESS  — Tests run: 5, Failures: 0, Errors: 0, Skipped: 1 (Docker)
+grep "NimbusJwtDecoder|jwtDecoder()" in src/main → none
+```
+
+**Codex re-verify:** please re-run the **containerized Playwright smoke** — authenticated `/api/**` calls should now succeed (JWKS resolves via `auth-server:9000`). That live containerized run remains Codex-only (no Docker/browser in the coordinator env). Codex's other round-1 notes are accepted/tracked (the classic-bridge + Jackson-2 shims = Sprint 16 cleanup item 0; Java CVE scanner + SB 4.1.0 = Sprint 16 backlog).
+
+---
 
 ## Why this sprint
 
