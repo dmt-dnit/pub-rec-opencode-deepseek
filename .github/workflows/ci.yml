@@ -24,13 +24,12 @@
 #   whose full-NVD-database download was too slow/flaky for CI.)
 #
 # ADMIN ACTION REQUIRED (Dimitri):
-#   1. NVD API key — add NVD_API_KEY as a repository secret
+#   1. Snyk token — add SNYK_TOKEN_CLAUDE_CODE_CLI as a repository secret
 #      (Settings → Secrets and variables → Actions → New repository secret).
-#      Without it the plugin falls back to public NVD feeds (rate-limited, slow, may
-#      time out on first run). Free key: https://nvd.nist.gov/developers/request-an-api-key
-#   2. Dependabot alerts — enable in repository settings
-#      (Settings → Security → Code security → Dependabot alerts → Enable).
-#      .github/dependabot.yml is now committed but alerts require the repo-level toggle.
+#      Get a token from a free Snyk account (Account settings → Auth Token, or a
+#      service account). The snyk-security job authenticates with it.
+#   2. Dependabot alerts — enabled (confirmed 2026-06-29). .github/dependabot.yml
+#      drives the version/security update PRs.
 
 name: CI
 
