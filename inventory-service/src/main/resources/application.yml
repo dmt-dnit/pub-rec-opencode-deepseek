@@ -2,9 +2,6 @@ spring:
   application:
     name: inventory-service
 
-  jackson:
-    use-jackson2-defaults: true
-
   security:
     oauth2:
       resourceserver:
