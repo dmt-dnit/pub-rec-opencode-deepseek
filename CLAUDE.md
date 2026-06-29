@@ -83,7 +83,7 @@ This is the compact ruleset distilled from the Track A retrospective. Full conte
 
 **Current track:** Track B — hardening (unblocked as of 2026-06-28)  
 **Last approved sprint:** Sprint 13 — Track A approved by Codex on 2026-06-28  
-**Next sprint entry point:** Sprint 14 (Track B Sprint 1) — **implemented & coordinator-verified, awaiting Codex.** B-5 (CI pipeline, Claude sonnet agent, commit `5ba89cf`) + B-1 (failure handling retry/DLQ/idempotency, opencode+DeepSeek, commits `9a69ce7`+`3f8d64b`). Both suites green via real `mvnw test`. Handoff: `docs/backlog/sprint-14-handoff.md`. Review file: `reviews/sprint-14-track-b-review.md`. Remaining Track B backlog (`docs/backlog/sprint-1.md` §Track B): B-2, B-3, B-4, B-6 — later sprints (B-6 = Docker Compose, its own sprint). B-7 already complete.  
+**Next sprint entry point:** Sprint 14 (Track B Sprint 1) — **round 2, awaiting Codex re-review.** Round 1 rejected (`reviews/sprint-14-track-b-review.md`): P1 `mvnw` non-executable (blocking), P2 outcome-idempotency. Both fixed: P1 `adaf54e` (chmod +x → 100755), P2 `a6d71b6` (`reserve()`→Optional no-op + reject-marker + new `OutcomeIdempotencyTest`, verified green on main). B-5 `5ba89cf`, B-1 round 1 `9a69ce7`+`3f8d64b`. Handoff (with round-2 section): `docs/backlog/sprint-14-handoff.md`. B-5 live Actions run still Codex-only (needs push). Remaining Track B backlog (`docs/backlog/sprint-1.md` §Track B): B-2, B-3, B-4, B-6 — later sprints (B-6 = Docker Compose, its own sprint). B-7 already complete.  
 **Pre-review command:** `bash scripts/pre-review-check.sh <sprint-number>`
 
 **Active caveats (do not re-litigate each sprint — update only when signal changes):**

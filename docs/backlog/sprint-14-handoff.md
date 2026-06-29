@@ -1,8 +1,32 @@
 # Sprint 14 (Track B Sprint 1) — Handoff to Codex
 
-**Coordinator:** Claude Code. **Date:** 2026-06-28.
+**Coordinator:** Claude Code. **Date:** 2026-06-28 (round 1) · 2026-06-29 (round 2).
 **Verification:** diff-read + real `mvnw test` output (not self-report).
-**Tasks:** B-5 (CI pipeline) · B-1 (failure handling: retry/DLQ/idempotency). Both done.
+**Tasks:** B-5 (CI pipeline) · B-1 (failure handling: retry/DLQ/idempotency).
+
+---
+
+## Round 2 (2026-06-29) — addresses Codex rejection `reviews/sprint-14-track-b-review.md`
+
+Round 1 was **rejected**: P1 (blocking) — `mvnw` wrappers tracked non-executable so Actions `./mvnw` fails on Ubuntu; P2 (should-fix) — inventory duplicate handling stock-idempotent but not outcome-idempotent. Both fixed:
+
+| Issue | Fix | Commit | Verified |
+|-------|-----|--------|----------|
+| **P1** `mvnw` not executable | `git update-index --chmod=+x` on all 4 wrappers → `100755` | `adaf54e` | `git ls-files -s '*mvnw'` all `100755` |
+| **P2** outcome-idempotency | `reserve()` → `Optional` (no-op on duplicate, no re-publish/feed); REJECTED path now saves the `ProcessedOrder` marker; listener publishes only `ifPresent`. New `OrderEventListenerOutcomeIdempotencyTest`. | `a6d71b6` | inventory `mvnw test` green on main; `OutcomeIdempotencyTest` 2/2 |
+
+P1 was coordinator-direct (pure git mode bit, Codex supplied the exact command, verifiable via `git ls-files -s`). P2 was implemented by a Claude sonnet worktree agent; brief `docs/backlog/tasks/sprint-14/B-1-round2-outcome-idempotency.md`; I took only the genuine 3-file delta onto main (the agent's worktree had branched from an old base and recreated round-1 files byte-identically) and re-ran the inventory suite on main to verify.
+
+**Round-2 outcome-idempotency evidence (real surefire summaries, main, Java 21):**
+```
+OrderEventListenerOutcomeIdempotencyTest: Tests run: 2, Failures: 0, Errors: 0, Skipped: 0
+OrderEventListenerIdempotencyTest:        Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+OrderEventListenerDltTest:                Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+InventoryIntegrationTest:                 Tests run: 1, Failures: 0, Errors: 0, Skipped: 1   (Docker-gated, pre-existing)
+```
+New test asserts, for both duplicate-success and duplicate-rejection: publisher `times(1)` + `convertAndSend` `times(1)` (one input → one output), plus stock 9/0 and the marker present on the rejected path.
+
+**Still Codex-only:** B-5 live Actions run (needs the branch pushed; round 1 commits were local). P1 directly unblocks that run.
 
 ---
 
