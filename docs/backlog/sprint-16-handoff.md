@@ -14,7 +14,15 @@ Codex caught a real coordinator integration error + a Swagger gap. Both fixed in
 
 **Round-2 coordinator verification (my own `mvnw verify`, Java 21):** auth `BUILD SUCCESS`; order `Tests run: 6, Failures: 0, Errors: 0`; inventory `Tests run: 5, Failures: 0, Errors: 0, Skipped: 1`. State re-checked explicitly: 3 services on **4.1.0**, `starter-classic`/`jackson-datatype-jsr310` = 0, springdoc present, SB-3 Jackson-3 yml serde intact, exact `/v3/api-docs` permit in all 3.
 
-**Codex re-verify:** containerized smoke (already passed r1) + now `/v3/api-docs` returns 200 on auth-server + the OWASP job completing with the key. Dependabot alerts now enabled (you confirmed HTTP 204).
+**Codex re-verify (r2):** containerized smoke (already passed r1) + `/v3/api-docs` returns 200 on auth-server. Dependabot alerts now enabled (HTTP 204).
+
+## Round 3 (2026-06-29) — SEC-1 scanner swapped: OWASP → Snyk
+
+Codex round-2 verdict (`reviews/sprint-16-track-b-round-2-review.md`) cleared everything except the OWASP job: it failed at "Scan shared-model" and skipped the rest. **Root cause:** OWASP Dependency-Check downloads the full NVD database (~361k records) on first run — 15–25 min — and the cache was keyed on `hashFiles('**/pom.xml')`, so it re-downloaded on every pom change and timed out. OWASP is the wrong tool for this CI.
+
+**Fix (coordinator-direct CI config — flagged, like the Sprint 14 inline-build fix; the agent-worktree path has twice caused regressions on `.github/`):** replaced the `owasp-dependency-check` job with a **`snyk-security`** job — `snyk test --all-projects --severity-threshold=high` across all 4 Maven poms + both npm UIs in one fast run, no NVD pre-download; SARIF uploaded to the Security tab. Report-only first pass (`continue-on-error`) so the known dev-only Angular-toolchain CVEs (no forward fix at the 22.0.4 floor) don't red the gate. Decided with Dimitri (he uses Snyk at work; fits the showcase). Validated: `ci.yml` parses, 7 jobs, v5/v6 actions intact.
+
+**New admin action (Dimitri):** add a `SNYK_TOKEN` repo secret (free Snyk account). The `NVD_API_KEY` is now unused (harmless to leave). **Codex re-verify:** the `snyk-security` job runs and reports (live, post-push + token).
 
 ## Commits (on `main`)
 

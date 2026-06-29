@@ -1,5 +1,8 @@
 # SEC-1 — Server-side vulnerability scanning in CI
 
+> **Round 2 update (2026-06-29):** scanner switched from OWASP Dependency-Check to **Snyk** — OWASP's full-NVD-database download (~360k records, 15–25 min) hung/timed out in CI. CI now runs `snyk test --all-projects --severity-threshold=high` (needs `SNYK_TOKEN` secret). The rest of this brief (Dependabot, separate non-blocking job, report-only first pass) still applies.
+
+
 **Sprint:** 16 (Track B Sprint 3)
 **Priority:** Should — Sprint 14 follow-up 3 (Codex flagged: no server-side CVE visibility; CI runs build/test only)
 **Implementer:** Claude sonnet worktree agent (CI/config, read-verifiable). Branch from current `main`; verify base with `git diff --name-only`.

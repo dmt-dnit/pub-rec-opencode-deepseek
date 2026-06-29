@@ -17,14 +17,11 @@
 #   the other two jobs continue and report independently. `needs: shared-model` is kept as a
 #   fail-fast gate (shared-model's own tests must pass before downstream jobs run).
 #
-# Security scanning: a dedicated `owasp-dependency-check` job runs the OWASP Dependency-Check
-#   Maven plugin across all four Maven modules (invoked via plugin goal on the command line —
-#   no pom.xml changes required). Threshold: fail on CVSS >= 7 (High/Critical).
-#   The job is `continue-on-error: true` in this first iteration (report-only) because:
-#     (a) The NVD database download is slow/rate-limited without an API key.
-#     (b) The NVD API key must be added by a repo admin before the scan is reliable.
-#   Once the NVD_API_KEY secret is in place and the DB cache is stable, remove
-#   `continue-on-error` to promote this job to a blocking gate.
+# Security scanning: a dedicated `snyk-security` job runs `snyk test --all-projects`
+#   across all 4 Maven modules + both npm UIs (no pom.xml changes). Threshold: fail on
+#   HIGH+ severity; report-only first pass (`continue-on-error: true`) — see the job's
+#   header comment. Requires the SNYK_TOKEN repo secret. (Replaced OWASP Dependency-Check,
+#   whose full-NVD-database download was too slow/flaky for CI.)
 #
 # ADMIN ACTION REQUIRED (Dimitri):
 #   1. NVD API key — add NVD_API_KEY as a repository secret
@@ -158,26 +155,29 @@ jobs:
       - name: Install and build inventory-ui
         run: cd inventory-ui && npm ci && npm run build
 
-  # ── 4. OWASP Dependency-Check (server-side CVE scan) ─────────────────────────
+  # ── 4. Snyk SCA (server-side dependency vulnerability scan) ──────────────────
   #
-  # Policy: fail on CVSS >= 7 (High/Critical). Report-only in this first iteration
-  # (`continue-on-error: true`). Promote to blocking once NVD_API_KEY is set and
-  # the NVD DB cache is stable (remove continue-on-error).
+  # Policy: fail on HIGH+ severity. Report-only in this first iteration
+  # (`continue-on-error: true`) because the known dev-only Angular toolchain CVEs
+  # (http-proxy-middleware etc.) have no forward fix at the Angular 22.0.4 floor and
+  # would otherwise red the gate; promote to blocking (remove continue-on-error)
+  # once those are dismissed/resolved.
   #
-  # Each Maven module is scanned independently via the plugin goal invoked on the
-  # command line — no pom.xml changes. shared-model is installed inline so
-  # downstream modules can resolve it during the scan's dependency resolution.
+  # One `snyk test --all-projects` covers all 4 Maven poms + both npm UIs. Fast and
+  # account-backed — replaced OWASP Dependency-Check, whose ~360k-record NVD database
+  # download made it impractical in CI. shared-model is installed inline so the service
+  # poms resolve com.example:shared-model. Results upload as SARIF to the Security tab.
   #
-  # NVD DB is cached under ~/.owasp/dependency-check-data keyed on runner OS +
-  # all pom.xml hashes. The cache restores stale data if the exact key misses,
-  # which limits full re-downloads to pom changes or weekly cache expiry.
-  owasp-dependency-check:
-    name: OWASP Dependency-Check (CVSS >= 7 threshold, report-only)
+  # Requires repo secret SNYK_TOKEN (free Snyk account → repo Settings → Secrets → Actions).
+  snyk-security:
+    name: Snyk SCA (HIGH+ threshold, report-only)
     runs-on: ubuntu-latest
-    # NOT listed in `needs` of any other job — scan hiccups cannot mask test failures.
-    # continue-on-error: true until NVD_API_KEY is added and the cache is stable.
-    # To promote to blocking: remove the line below and re-push.
+    # NOT in any job's `needs` — a scan hiccup cannot mask test failures.
+    # continue-on-error: report-only first pass. Remove to make it a blocking gate.
     continue-on-error: true
+    permissions:
+      contents: read
+      security-events: write   # upload SARIF to the Security tab
     steps:
       - uses: actions/checkout@v5
 
@@ -188,65 +188,26 @@ jobs:
           java-version: 21
           cache: maven
 
-      - name: Cache OWASP NVD database
-        uses: actions/cache@v4
+      - name: Set up Node 22
+        uses: actions/setup-node@v6
         with:
-          path: ~/.owasp/dependency-check-data
-          key: owasp-nvd-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            owasp-nvd-${{ runner.os }}-
+          node-version: 22
 
-      - name: Install shared-model (needed for downstream module dependency resolution)
+      - name: Install shared-model (so service poms resolve com.example:shared-model)
         run: cd shared-model && ./mvnw --batch-mode -q -DskipTests install
 
-      - name: Scan shared-model
-        run: |
-          cd shared-model && ./mvnw --batch-mode \
-            org.owasp:dependency-check-maven:check \
-            -DfailBuildOnCVSS=7 \
-            -DdataDirectory=$HOME/.owasp/dependency-check-data \
-            -DnvdApiKey=${{ secrets.NVD_API_KEY }} \
-            -Dformat=HTML \
-            -DprettyPrint=true
+      - name: Set up Snyk CLI
+        uses: snyk/actions/setup@master
 
-      - name: Scan auth-server
-        run: |
-          cd auth-server && ./mvnw --batch-mode \
-            org.owasp:dependency-check-maven:check \
-            -DfailBuildOnCVSS=7 \
-            -DdataDirectory=$HOME/.owasp/dependency-check-data \
-            -DnvdApiKey=${{ secrets.NVD_API_KEY }} \
-            -Dformat=HTML \
-            -DprettyPrint=true
+      - name: Snyk test — all projects (4 Maven modules + 2 npm UIs), HIGH+
+        continue-on-error: true   # report-only; vulns above threshold don't fail the build yet
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk test --all-projects --severity-threshold=high --sarif-file-output=snyk.sarif
 
-      - name: Scan order-service
-        run: |
-          cd order-service && ./mvnw --batch-mode \
-            org.owasp:dependency-check-maven:check \
-            -DfailBuildOnCVSS=7 \
-            -DdataDirectory=$HOME/.owasp/dependency-check-data \
-            -DnvdApiKey=${{ secrets.NVD_API_KEY }} \
-            -Dformat=HTML \
-            -DprettyPrint=true
-
-      - name: Scan inventory-service
-        run: |
-          cd inventory-service && ./mvnw --batch-mode \
-            org.owasp:dependency-check-maven:check \
-            -DfailBuildOnCVSS=7 \
-            -DdataDirectory=$HOME/.owasp/dependency-check-data \
-            -DnvdApiKey=${{ secrets.NVD_API_KEY }} \
-            -Dformat=HTML \
-            -DprettyPrint=true
-
-      - name: Upload scan reports
+      - name: Upload Snyk results to the GitHub Security tab
         if: always()
-        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v3
         with:
-          name: owasp-dependency-check-reports
-          path: |
-            shared-model/target/dependency-check-report.html
-            auth-server/target/dependency-check-report.html
-            order-service/target/dependency-check-report.html
-            inventory-service/target/dependency-check-report.html
-          if-no-files-found: warn
+          sarif_file: snyk.sarif
