@@ -83,7 +83,7 @@ This is the compact ruleset distilled from the Track A retrospective. Full conte
 
 **Current track:** Track B — hardening (unblocked as of 2026-06-28)  
 **Last approved sprint:** Sprint 13 — Track A approved by Codex on 2026-06-28  
-**Next sprint entry point:** Sprint 14 (Track B Sprint 1) — **round 2, awaiting Codex re-review.** Round 1 rejected (`reviews/sprint-14-track-b-review.md`): P1 `mvnw` non-executable (blocking), P2 outcome-idempotency. Both fixed: P1 `adaf54e` (chmod +x → 100755), P2 `a6d71b6` (`reserve()`→Optional no-op + reject-marker + new `OutcomeIdempotencyTest`, verified green on main). B-5 `5ba89cf`, B-1 round 1 `9a69ce7`+`3f8d64b`. Handoff (with round-2 section): `docs/backlog/sprint-14-handoff.md`. B-5 live Actions run still Codex-only (needs push). Remaining Track B backlog (`docs/backlog/sprint-1.md` §Track B): B-2, B-3, B-4, B-6 — later sprints (B-6 = Docker Compose, its own sprint). B-7 already complete.  
+**Next sprint entry point:** Sprint 14 (Track B Sprint 1) — **round 2 complete, B-5 live CI green, awaiting Codex re-review.** Round 1 rejected (`reviews/sprint-14-track-b-review.md`): P1 `mvnw` non-executable (blocking), P2 outcome-idempotency. Fixed: P1 `adaf54e` (chmod +x → 100755), P2 `a6d71b6` (`reserve()`→Optional no-op + reject-marker + `OutcomeIdempotencyTest`). After push, first live Actions run failed on the shared-model artifact hand-off → fixed `f5d81b4` (inline shared-model build per job, no artifact); **all 6 CI jobs green on push.** B-5 `5ba89cf`, B-1 round 1 `9a69ce7`+`3f8d64b`. Handoff: `docs/backlog/sprint-14-handoff.md`. Remaining Track B backlog (`docs/backlog/sprint-1.md` §Track B): B-2, B-3, B-4, B-6 — later sprints (B-6 = Docker Compose, its own sprint). B-7 already complete.  
 **Pre-review command:** `bash scripts/pre-review-check.sh <sprint-number>`
 
 **Active caveats (do not re-litigate each sprint — update only when signal changes):**
@@ -92,6 +92,7 @@ This is the compact ruleset distilled from the Track A retrospective. Full conte
 - Angular webpack builder deprecation warning — not a blocker yet; track at next Angular version upgrade
 - Mockito/Java agent self-attach warning (OpenJ9 environments) — accepted, documented in Sprint 2 review
 - Testcontainers/Surefire shutdown warning in inventory-service — exit 0, noisy; clean up in B-3
+- GitHub Actions Node 20 deprecation: `actions/checkout@v4` + `setup-java@v4` auto-forced onto Node 24, jobs pass; revisit when those actions publish Node-24 majors (added Sprint 14)
 
 **Track A history (for reference):** 13 sprints, Sprints 1–13, closed 2026-06-28. Full Playwright smoke test (login → order placement → Kafka saga → live status update → inventory decrement) passes against a non-empty local DB. See `docs/backlog/track-a-retro.md` for lessons learned.
 

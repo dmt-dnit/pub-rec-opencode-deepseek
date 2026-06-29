@@ -17,6 +17,14 @@ Round 1 was **rejected**: P1 (blocking) — `mvnw` wrappers tracked non-executab
 
 P1 was coordinator-direct (pure git mode bit, Codex supplied the exact command, verifiable via `git ls-files -s`). P2 was implemented by a Claude sonnet worktree agent; brief `docs/backlog/tasks/sprint-14/B-1-round2-outcome-idempotency.md`; I took only the genuine 3-file delta onto main (the agent's worktree had branched from an old base and recreated round-1 files byte-identically) and re-ran the inventory suite on main to verify.
 
+### B-5 live Actions run — now GREEN ✅ (was the round-1 Codex-only item)
+
+After pushing, the first live run failed at the shared-model artifact hand-off: `upload-artifact@v4` reported "No files were found" for the workspace-relative `.m2` path, so downstream jobs couldn't download it. Fixed in `f5d81b4` (coordinator-direct CI config, live-verified): dropped upload/download-artifact; each Maven job now builds `shared-model` inline (`./mvnw -DskipTests install` into `~/.m2`) before its module — the documented local flow, no cross-job transfer. **Re-run: all 6 jobs green** (shared-model gate → auth-server/order-service/inventory-service in parallel → order-ui/inventory-ui). This closes B-5 acceptance criteria 2 (clean push all-green) live.
+
+Two coordinator-direct CI touches this round (P1 chmod, `f5d81b4` inline-build) — both pure CI config in a Codex-flagged area whose authoritative verification is the live run, and the worktree-agent path had twice branched from a stale base. Flagged here for transparency.
+
+**New caveat (non-blocking):** GitHub Actions warns Node 20 is deprecated; `actions/checkout@v4` + `setup-java@v4` are auto-forced onto Node 24 and pass. Revisit when those actions publish Node-24 majors. Added to CLAUDE.md caveats.
+
 **Round-2 outcome-idempotency evidence (real surefire summaries, main, Java 21):**
 ```
 OrderEventListenerOutcomeIdempotencyTest: Tests run: 2, Failures: 0, Errors: 0, Skipped: 0
