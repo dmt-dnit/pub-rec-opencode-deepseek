@@ -83,7 +83,7 @@ This is the compact ruleset distilled from the Track A retrospective. Full conte
 
 **Current track:** Track B — hardening (unblocked as of 2026-06-28)  
 **Last approved sprint:** Sprint 14 (Track B Sprint 1) — approved by Codex on 2026-06-29 (round 2, `reviews/sprint-14-track-b-round-2-review.md`); live CI green (Actions run `28354413116`, all 6 jobs). Delivered B-5 (CI pipeline) + B-1 (retry/DLQ/idempotency). Round-1 blockers P1 (mvnw exec bit `adaf54e`) + P2 (outcome-idempotency `a6d71b6`) closed; first live run's artifact-handoff failure fixed inline `f5d81b4`.  
-**Next sprint entry point:** Sprint 15 (Track B Sprint 2) — **scoped & briefed: Spring Boot 3.4.3 → 4.0.x migration (all 4 Java modules).** Dependency-currency check (2026-06-29) found Boot 3.4.3 is EOL (3.x free support ends 2026-06-30; current 4.1.0); Dimitri chose full 4.x migration now. Overview `docs/backlog/sprint-15.md`; brief `docs/backlog/tasks/sprint-15/SB-1-spring-boot-4-migration.md` (single tightly-coupled migration; CI action-version bump folded in). Implementer TBD (rec: Claude opus agent) — **awaiting dispatch go-ahead.** Deferred to Sprint 16+: inventory exactly-once/outbox hardening + server-side vuln scanning (Sprint 14 follow-ups 2 & 3), and Track B B-2/B-3/B-4/B-6. Angular 22 + Java 21 confirmed current. B-7 done.  
+**Next sprint entry point:** Sprint 16 (Track B Sprint 3) — not yet scoped. **Sprint 15 (Spring Boot 4.x migration) is implemented & coordinator-verified, awaiting Codex** (`docs/backlog/sprint-15-handoff.md`; commits `075412f`→`f190f68`; all 4 modules green on Boot 4.0.7 via my own `mvnw verify`, implemented by opencode+DeepSeek). Sprint 16 backlog: **(0) Boot-4 modernization cleanup** — remove the `spring-boot-starter-classic` bridge + adopt modular starters + migrate off `use-jackson2-defaults` to real Jackson 3 (Sprint 15 left these compatibility shims, accepted by Dimitri); plus inventory exactly-once/outbox hardening + server-side vuln scanning (Sprint 14 follow-ups 2 & 3); plus Track B B-2 (observability), B-3 (Testcontainers), B-4 (OpenAPI), B-6 (Docker Compose). Run the dependency-currency check (cadence step 1) when scoping. Angular 22 + Java 21 current; Spring Boot now 4.0.7 (off EOL). B-7 done.  
 **Pre-review command:** `bash scripts/pre-review-check.sh <sprint-number>`
 
 **Active caveats (do not re-litigate each sprint — update only when signal changes):**
@@ -92,7 +92,8 @@ This is the compact ruleset distilled from the Track A retrospective. Full conte
 - Angular webpack builder deprecation warning — not a blocker yet; track at next Angular version upgrade
 - Mockito/Java agent self-attach warning (OpenJ9 environments) — accepted, documented in Sprint 2 review
 - Testcontainers/Surefire shutdown warning in inventory-service — exit 0, noisy; clean up in B-3
-- GitHub Actions Node 20 deprecation: `actions/checkout@v4`/`setup-java@v4`/`setup-node@v4` auto-forced onto Node 24, jobs pass. Newer majors exist (checkout v7, setup-java v5, setup-node v6) — scheduled as Sprint 15 follow-up 1 (added Sprint 14)
+- ~~GitHub Actions Node 20 deprecation~~ — RESOLVED Sprint 15: actions bumped to checkout@v5, setup-java@v5, setup-node@v6 (`f190f68`); confirm on next live CI run
+- Spring Boot 4.0.7 runs in compatibility mode: `spring-boot-starter-classic` bridge + `spring.jackson.use-jackson2-defaults:true` (Sprint 15 declared shims). Working/supported, but not the clean modular/Jackson-3 end state — Sprint 16 cleanup item (0)
 
 **Track A history (for reference):** 13 sprints, Sprints 1–13, closed 2026-06-28. Full Playwright smoke test (login → order placement → Kafka saga → live status update → inventory decrement) passes against a non-empty local DB. See `docs/backlog/track-a-retro.md` for lessons learned.
 
