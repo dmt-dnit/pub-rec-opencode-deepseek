@@ -38,7 +38,9 @@ fi
 BRIEFS_DIR="docs/backlog/tasks/sprint-${SPRINT}"
 if [[ -d "$BRIEFS_DIR" ]]; then
   for brief in "$BRIEFS_DIR"/*.md; do
-    task_id="$(basename "$brief" | grep -oE '^[A-Z]+-[0-9]+')"
+    # Allow IDs like B-2, SB-3, and B-O1 (alphanumeric suffix). `|| true` so a
+    # non-matching filename doesn't abort the whole check under `set -e`.
+    task_id="$(basename "$brief" | grep -oE '^[A-Z]+-[A-Z0-9]+' || true)"
     if [[ -n "$task_id" ]] && [[ -f "$HANDOFF" ]] && ! grep -q "$task_id" "$HANDOFF"; then
       echo "[FAIL] Task $task_id has a brief but is not mentioned in $HANDOFF."
       FAIL=1
