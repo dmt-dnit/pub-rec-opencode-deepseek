@@ -47,3 +47,12 @@ logging:
   level:
     com.example.inventoryservice: INFO
     org.springframework.security: INFO
+  structured:
+    format:
+      console: ecs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,info

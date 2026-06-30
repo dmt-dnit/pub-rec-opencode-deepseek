@@ -36,3 +36,12 @@ logging:
   level:
     com.example.authserver: INFO
     org.springframework.security: DEBUG
+  structured:
+    format:
+      console: ecs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,info

@@ -14,11 +14,18 @@ public record OrderResponse(
         BigDecimal totalAmount,
         OrderStatus status,
         Instant placedAt,
-        Instant updatedAt
+        Instant updatedAt,
+        String correlationId
 ) {
     public record LineItem(String sku, int quantity) {}
 
+    /** Used for list queries where no correlation ID is in context. */
     public static OrderResponse from(Order order) {
+        return from(order, null);
+    }
+
+    /** Used for saga completion where the correlation ID is available in the SLF4J MDC. */
+    public static OrderResponse from(Order order, String correlationId) {
         return new OrderResponse(
                 order.getOrderId(),
                 order.getCustomerEmail(),
@@ -28,7 +35,8 @@ public record OrderResponse(
                 order.getTotalAmount(),
                 order.getStatus(),
                 order.getPlacedAt(),
-                order.getUpdatedAt()
+                order.getUpdatedAt(),
+                correlationId
         );
     }
 }

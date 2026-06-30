@@ -7,6 +7,7 @@ import com.example.orderservice.repository.OrderRepository;
 import com.example.sharedmodel.InventoryReservationEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
@@ -45,7 +46,8 @@ public class InventoryReservationListener {
             }
             order.setUpdatedAt(Instant.now());
             Order saved = orderRepository.save(order);
-            OrderResponse response = OrderResponse.from(saved);
+            // correlationId was set in MDC by CorrelationMdcRecordInterceptor before this listener ran
+            OrderResponse response = OrderResponse.from(saved, MDC.get("correlationId"));
             messagingTemplate.convertAndSend("/topic/messages", response);
             log.info("Order {} updated to status {}", saved.getOrderId(), saved.getStatus());
         }, () -> log.warn("No order found for orderId: {}", event.orderId()));

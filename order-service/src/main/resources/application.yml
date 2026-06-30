@@ -48,3 +48,12 @@ logging:
   level:
     com.example.orderservice: INFO
     org.springframework.security: INFO
+  structured:
+    format:
+      console: ecs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,info
