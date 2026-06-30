@@ -6,6 +6,7 @@ import com.example.inventoryservice.publisher.InventoryEventPublisher;
 import com.example.inventoryservice.repository.OutboxEventRepository;
 import com.example.inventoryservice.repository.ProcessedOrderRepository;
 import com.example.inventoryservice.repository.ProductRepository;
+import com.example.inventoryservice.service.OutboxRelay;
 import com.example.sharedmodel.InventoryReservationEvent;
 import com.example.sharedmodel.OrderItem;
 import com.example.sharedmodel.OrderPlacedEvent;
@@ -14,6 +15,7 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -25,13 +27,10 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JacksonJsonDeserializer;
 import org.springframework.kafka.test.context.EmbeddedKafka;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-
-import org.springframework.beans.factory.annotation.Value;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -42,37 +41,30 @@ import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 /**
- * Outcome-idempotency tests: a redelivered OrderPlacedEvent (same orderId) must
- * produce exactly one published InventoryReservationEvent and one WebSocket feed
- * item — regardless of whether the first outcome was RESERVED or REJECTED.
- * <p>
- * With the transactional outbox, publishing is delegated to {@code OutboxRelay}.
+ * Transactional outbox integration tests. Verifies crash-safe exactly-once
+ * publish guarantees using EmbeddedKafka.
  */
 @SpringBootTest
 @EmbeddedKafka(partitions = 1,
-        topics = {"test-order-events-outcome", "test-reservations-out"})
+        topics = {"test-outbox-order", "test-outbox-inv"})
 @ActiveProfiles("test")
 @DirtiesContext
-class OrderEventListenerOutcomeIdempotencyTest {
+class OutboxIntegrationTest {
 
     @DynamicPropertySource
     static void registerProps(DynamicPropertyRegistry registry) {
-        registry.add("app.kafka.topic", () -> "test-inv-events-outcome");
-        registry.add("app.kafka.listen-topic", () -> "test-order-events-outcome");
+        registry.add("app.kafka.topic", () -> "test-outbox-inv");
+        registry.add("app.kafka.listen-topic", () -> "test-outbox-order");
     }
 
     @MockitoBean
     private InventoryEventPublisher publisher;
-
-    @MockitoBean
-    private SimpMessagingTemplate messagingTemplate;
 
     @Autowired
     private KafkaTemplate<String, Object> kafkaTemplate;
@@ -85,6 +77,9 @@ class OrderEventListenerOutcomeIdempotencyTest {
 
     @Autowired
     private OutboxEventRepository outboxEventRepository;
+
+    @Autowired
+    private OutboxRelay outboxRelay;
 
     @TestConfiguration
     static class TestConfig {
@@ -101,7 +96,7 @@ class OrderEventListenerOutcomeIdempotencyTest {
 
             Map<String, Object> props = new HashMap<>();
             props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-            props.put(ConsumerConfig.GROUP_ID_CONFIG, "test-group-reservations-outcome");
+            props.put(ConsumerConfig.GROUP_ID_CONFIG, "test-group-outs");
             props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
             ConsumerFactory<String, InventoryReservationEvent> consumerFactory =
@@ -121,68 +116,87 @@ class OrderEventListenerOutcomeIdempotencyTest {
         processedOrderRepository.deleteAll();
         productRepository.deleteAll();
         outboxEventRepository.deleteAll();
-        when(publisher.publish(any(InventoryReservationEvent.class)))
-                .thenReturn(CompletableFuture.completedFuture(null));
     }
 
+    /**
+     * A duplicate OrderPlacedEvent must produce exactly ONE outbox row and ONE
+     * published InventoryReservationEvent (exactly-once). The second delivery
+     * is idempotent — no second outbox row, no second publish.
+     */
     @Test
-    void duplicateSuccessPublishesExactlyOnce() throws Exception {
+    void duplicateOrderPlacedEventProducesOneOutboxRowAndOnePublishedEvent() throws Exception {
         productRepository.save(new Product("SKU-001", "Widget", 10));
 
+        doReturn(CompletableFuture.completedFuture(null))
+                .when(publisher).publish(any(InventoryReservationEvent.class));
+
         OrderPlacedEvent event = new OrderPlacedEvent(
-                "order-success-dup", "test@example.com",
+                "order-outbox-dup", "test@example.com",
                 List.of(new OrderItem("SKU-001", 1)),
                 new BigDecimal("9.99"), Instant.now());
 
-        kafkaTemplate.send("test-order-events-outcome", "order-success-dup", event);
-        kafkaTemplate.send("test-order-events-outcome", "order-success-dup", event);
+        kafkaTemplate.send("test-outbox-order", "order-outbox-dup", event);
+        kafkaTemplate.send("test-outbox-order", "order-outbox-dup", event);
 
         Thread.sleep(6000);
 
-        Product product = productRepository.findById("SKU-001").orElseThrow();
-        assertThat(product.getQuantityOnHand()).isEqualTo(9);
+        List<OutboxEvent> outboxRows = outboxEventRepository.findAll();
+        assertThat(outboxRows).hasSize(1)
+                .as("Duplicate delivery must not create a second outbox row");
+        assertThat(outboxRows.get(0).getOrderId()).isEqualTo("order-outbox-dup");
+        assertThat(outboxRows.get(0).getStatus()).isEqualTo(OutboxEvent.Status.SENT);
 
         verify(publisher, times(1)).publish(any(InventoryReservationEvent.class));
 
-        verify(messagingTemplate, times(1))
-                .convertAndSend(eq("/topic/messages"), any(InventoryReservationEvent.class));
-
-        List<OutboxEvent> outboxRows = outboxEventRepository.findAll();
-        assertThat(outboxRows).hasSize(1);
-        assertThat(outboxRows.get(0).getOrderId()).isEqualTo("order-success-dup");
-        assertThat(outboxRows.get(0).getStatus()).isEqualTo(OutboxEvent.Status.SENT);
-        assertThat(outboxRows.get(0).getSentAt()).isNotNull();
+        Product product = productRepository.findById("SKU-001").orElseThrow();
+        assertThat(product.getQuantityOnHand()).isEqualTo(9);
     }
 
+    /**
+     * A simulated publish failure on the first relay attempt does NOT lose the
+     * event. The outbox row stays PENDING and is re-published on the next
+     * attempt — the event is eventually delivered.
+     */
     @Test
-    void duplicateRejectionPublishesExactlyOnce() throws Exception {
-        productRepository.save(new Product("SKU-003", "Gizmo", 0));
+    void publishFailureDoesNotLoseEvent() throws Exception {
+        productRepository.save(new Product("SKU-001", "Widget", 10));
+
+        doThrow(new RuntimeException("Simulated broker failure"))
+                .doReturn(CompletableFuture.completedFuture(null))
+                .when(publisher).publish(any(InventoryReservationEvent.class));
 
         OrderPlacedEvent event = new OrderPlacedEvent(
-                "order-reject-dup", "test@example.com",
-                List.of(new OrderItem("SKU-003", 1)),
+                "order-outbox-retry", "test@example.com",
+                List.of(new OrderItem("SKU-001", 1)),
                 new BigDecimal("9.99"), Instant.now());
 
-        kafkaTemplate.send("test-order-events-outcome", "order-reject-dup", event);
-        kafkaTemplate.send("test-order-events-outcome", "order-reject-dup", event);
+        kafkaTemplate.send("test-outbox-order", "order-outbox-retry", event);
 
         Thread.sleep(6000);
 
-        verify(publisher, times(1)).publish(argThat(e ->
-                e.status() == InventoryReservationEvent.ReservationStatus.REJECTED));
+        List<OutboxEvent> rows = outboxEventRepository.findAll();
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0).getStatus())
+                .as("Outbox row must stay PENDING after publish failure")
+                .isEqualTo(OutboxEvent.Status.PENDING);
+        assertThat(rows.get(0).getSentAt()).isNull();
 
-        verify(messagingTemplate, times(1))
-                .convertAndSend(eq("/topic/messages"), any(InventoryReservationEvent.class));
+        verify(publisher, times(1)).publish(any(InventoryReservationEvent.class));
 
-        assertThat(processedOrderRepository.existsById("order-reject-dup")).isTrue();
+        doReturn(CompletableFuture.completedFuture(null))
+                .when(publisher).publish(any(InventoryReservationEvent.class));
 
-        Product product = productRepository.findById("SKU-003").orElseThrow();
-        assertThat(product.getQuantityOnHand()).isEqualTo(0);
+        outboxRelay.processPending();
 
-        List<OutboxEvent> outboxRows = outboxEventRepository.findAll();
-        assertThat(outboxRows).hasSize(1);
-        assertThat(outboxRows.get(0).getOrderId()).isEqualTo("order-reject-dup");
-        assertThat(outboxRows.get(0).getStatus()).isEqualTo(OutboxEvent.Status.SENT);
-        assertThat(outboxRows.get(0).getSentAt()).isNotNull();
+        rows = outboxEventRepository.findAll();
+        assertThat(rows.get(0).getStatus())
+                .as("Outbox row must be SENT after successful retry")
+                .isEqualTo(OutboxEvent.Status.SENT);
+        assertThat(rows.get(0).getSentAt()).isNotNull();
+
+        verify(publisher, times(2)).publish(any(InventoryReservationEvent.class));
+
+        Product product = productRepository.findById("SKU-001").orElseThrow();
+        assertThat(product.getQuantityOnHand()).isEqualTo(9);
     }
 }

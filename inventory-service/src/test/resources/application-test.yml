@@ -27,3 +27,7 @@ app:
   kafka:
     topic: test-reservations-out
     listen-topic: test-orders-in
+
+outbox:
+  relay:
+    interval-ms: 60000
