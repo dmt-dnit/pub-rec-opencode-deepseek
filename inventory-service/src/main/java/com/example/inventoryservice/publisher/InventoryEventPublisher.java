@@ -28,7 +28,7 @@ public class InventoryEventPublisher {
         this.topic = topic;
     }
 
-    public void publish(InventoryReservationEvent event) {
+    public CompletableFuture<SendResult<String, InventoryReservationEvent>> publish(InventoryReservationEvent event) {
         ProducerRecord<String, InventoryReservationEvent> record =
                 new ProducerRecord<>(topic, event.orderId(), event);
 
@@ -51,5 +51,7 @@ public class InventoryEventPublisher {
                 log.error("Failed to publish event: {}", event, ex);
             }
         });
+
+        return future;
     }
 }
