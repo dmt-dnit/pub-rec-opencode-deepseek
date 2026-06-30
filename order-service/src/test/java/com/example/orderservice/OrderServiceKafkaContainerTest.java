@@ -10,9 +10,6 @@ import com.example.sharedmodel.OrderItem;
 import com.example.sharedmodel.OrderPlacedEvent;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assumptions;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,8 +31,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.KafkaContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import java.math.BigDecimal;
@@ -55,47 +53,25 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Testcontainers integration test for order-service — exercises the real Kafka
  * producer + consumer path with an actual broker container.
  *
- * Skipped automatically (Assumptions.assumeTrue) when no Docker daemon is
- * available; never hard-fails {@code ./mvnw test} on a Docker-less machine.
- *
- * Verified by CI / Codex (which have Docker).
+ * Skipped automatically via {@code @Testcontainers(disabledWithoutDocker = true)}
+ * when no Docker daemon is available; never hard-fails {@code ./mvnw verify}
+ * on a Docker-less machine.
  */
+@Testcontainers(disabledWithoutDocker = true)
 @SpringBootTest
 @ActiveProfiles("test")
 @DirtiesContext
 class OrderServiceKafkaContainerTest {
 
+    @Container
     static KafkaContainer kafka = new KafkaContainer(
             DockerImageName.parse("confluentinc/cp-kafka:7.6.0"));
 
-    private static boolean dockerAvailable;
-
-    static {
-        // Unique topic names to avoid collision with EmbeddedKafka tests
-        System.setProperty("app.kafka.topic", "test-order-events-out");
-        System.setProperty("app.kafka.listen-topic", "test-inv-events-in");
-    }
-
-    @BeforeAll
-    static void setUp() {
-        dockerAvailable = DockerClientFactory.instance().isDockerAvailable();
-        if (dockerAvailable) {
-            kafka.start();
-        }
-    }
-
-    @AfterAll
-    static void tearDown() {
-        if (dockerAvailable && kafka.isRunning()) {
-            kafka.stop();
-        }
-    }
-
     @DynamicPropertySource
     static void kafkaProperties(DynamicPropertyRegistry registry) {
-        if (dockerAvailable) {
-            registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
-        }
+        registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
+        registry.add("app.kafka.topic", () -> "test-order-events-out");
+        registry.add("app.kafka.listen-topic", () -> "test-inv-events-in");
     }
 
     @MockitoBean
@@ -120,9 +96,6 @@ class OrderServiceKafkaContainerTest {
 
     @Test
     void shouldPublishOrderPlacedEventToRealKafka() throws Exception {
-        Assumptions.assumeTrue(dockerAvailable,
-                "No container runtime available — skipping Testcontainers-based test");
-
         orderPlacedCaptor.clear();
 
         String orderId = UUID.randomUUID().toString();
@@ -152,9 +125,6 @@ class OrderServiceKafkaContainerTest {
 
     @Test
     void shouldTransitionOrderStatusOnRealInventoryReservation() throws Exception {
-        Assumptions.assumeTrue(dockerAvailable,
-                "No container runtime available — skipping Testcontainers-based test");
-
         String orderId = UUID.randomUUID().toString();
         Instant now = Instant.now();
         Order order = new Order(orderId, "tc-saga@example.test",
