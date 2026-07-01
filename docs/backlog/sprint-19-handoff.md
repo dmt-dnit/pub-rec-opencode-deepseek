@@ -4,11 +4,19 @@
 **Tasks:** B-9 (CI-automate the containerized E2E smoke) + B-8 (harden the bare-podman fallback).
 **Implementer:** **opencode + DeepSeek** (`deepseek-v4-pro`) for both, per the standing default. Diffs coordinator-reviewed by reading; integrated onto `main`.
 
+## Round 2 (2026-07-01) — addresses Codex reject `reviews/sprint-19-track-b-review.md`
+Codex round-1 REJECT: B-9 clean (no source defect, live CI green), **two B-8 blockers** in `scripts/startup-all.sh`, both now fixed in `9b8216e` (opencode+DeepSeek, single repo-root run; brief `docs/backlog/tasks/sprint-19/round2-codex-fixes.md`):
+- **P1 (auth JWKS not fail-fast):** the kept hand-rolled auth loop exhausted 30 tries then *continued*, so downstream services could start against a dead auth server. **Fix:** replaced with `wait_for "auth-server JWKS" 30 2 curl -sf …` — now `exit 1` on timeout, consistent with every other gate. *(This was a coordinator brief error — the B-8 brief said keep it "as-is.")*
+- **P2 (engine mis-selection):** fallback picked `docker` whenever the CLI existed even if only podman's daemon worked. **Fix:** now probes `podman info` (preferred) → `docker info` → `exit 1` if neither daemon responds.
+
+**Coordinator verification:** read the diff; the fallback is now fully consistent — every readiness gate (ZK TCP, kafka `broker-api-versions`, auth JWKS, order/inventory `/actuator/health`) uses the fail-fast `wait_for`; no `sleep`-gate or silent-continue loop remains. shellcheck: opencode-reported clean (not installed in coordinator env). Exec bit `100755`. Compose path + `docker-compose.yml` untouched.
+
 ## Commits (on `main`)
 | SHA | Task | Summary |
 |-----|------|---------|
 | `e305061` | B-9 | `ci.yml`: new `e2e-smoke` job — compose-up the stack, wait for healthy, start both UIs, run Playwright smoke |
 | `8d2bbd8` | B-8 | `scripts/startup-all.sh`: replace fixed `sleep`s in the bare-podman fallback with bounded health-polls |
+| `9b8216e` | B-8 r2 | round-2 fix: auth JWKS → fail-fast `wait_for`; engine selection probes a working daemon (prefer podman) |
 
 ## B-9 — CI containerized E2E smoke (`e305061`)
 New additive `e2e-smoke` job in `.github/workflows/ci.yml` (8th job; **not** in any other job's `needs`, mirroring `snyk-security` isolation):
