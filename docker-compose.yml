@@ -19,6 +19,10 @@ services:
 
   kafka:
     image: docker.io/confluentinc/cp-kafka:7.8.0
+    # zookeeper stays a plain (start-order) dependency: Kafka retries the ZK
+    # connection internally until it's ready, so a ZK healthcheck buys nothing
+    # here and the 'ruok' 4lw is disabled-by-default on cp-zookeeper. Kafka's
+    # OWN healthcheck below is what gates order/inventory startup.
     depends_on:
       - zookeeper
     ports:
@@ -35,6 +39,15 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+    healthcheck:
+      # kafka-broker-api-versions exits 0 only when the broker actually accepts
+      # client connections — a genuine readiness signal, not merely "process started".
+      # This binary ships with all confluentinc/cp-kafka images.
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
 
   auth-server:
     build:
@@ -49,30 +62,56 @@ services:
       # purpose: the browser hits auth-server via the host-published port,
       # so "localhost" is correct from the browser's point of view, not the
       # container network's.
+    healthcheck:
+      # /actuator/health was added in B-2 (Sprint 17) and is permitted by
+      # SecurityConfig without authentication. curl is installed in the runtime
+      # image (see auth-server/Dockerfile) because eclipse-temurin:21-jre does
+      # not ship curl by default.
+      test: ["CMD", "curl", "-f", "http://localhost:9000/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
 
   order-service:
     build:
       context: .
       dockerfile: order-service/Dockerfile
     depends_on:
-      - kafka
-      - auth-server
+      kafka:
+        condition: service_healthy
+      auth-server:
+        condition: service_healthy
     ports:
       - "8080:8080"
     environment:
       # Container-to-container calls: use service names, not localhost.
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://auth-server:9000/oauth2/jwks
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
 
   inventory-service:
     build:
       context: .
       dockerfile: inventory-service/Dockerfile
     depends_on:
-      - kafka
-      - auth-server
+      kafka:
+        condition: service_healthy
+      auth-server:
+        condition: service_healthy
     ports:
       - "8081:8081"
     environment:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://auth-server:9000/oauth2/jwks
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s

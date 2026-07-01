@@ -8,6 +8,9 @@ COPY inventory-service/ inventory-service/
 RUN mvn -q -f inventory-service/pom.xml -DskipTests package
 
 FROM docker.io/library/eclipse-temurin:21-jre
+# curl is needed for the compose-level healthcheck (CMD curl -f /actuator/health).
+# eclipse-temurin:21-jre (Ubuntu 22.04 base) does not ship curl by default.
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /workspace/inventory-service/target/*.jar app.jar
 EXPOSE 8081

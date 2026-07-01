@@ -86,6 +86,12 @@ test('smoke: order placement saga updates both dashboards', async ({ browser }, 
     const orderCards = orderPage.locator('[data-testid="order-card"]');
     const initialOrderCount = await orderCards.count();
 
+    // Capture baseline reservation feed item count before placing order.
+    // Dirty-DB safe: always baseline-relative, never assumes count starts at 0.
+    // Used after the saga to assert exactly +1 item (F2 duplicate-entry check).
+    const feedItems = inventoryPage.locator('mat-list-item');
+    const initialFeedCount = await feedItems.count();
+
     // ---------------------------------------------------------------
     // 3. Place order: increment SKU-001 to qty 1
     //
@@ -150,6 +156,11 @@ test('smoke: order placement saga updates both dashboards', async ({ browser }, 
     // receives it over STOMP and prepends a mat-list-item to the feed.
     // The mat-chip inside the item contains the status text.
     // ---------------------------------------------------------------
+    // Assert reservation feed gained exactly one new item (F2 close: a duplicate
+    // entry would make count = initialFeedCount + 2, failing this assertion).
+    // toHaveCount drives the wait; the toBeVisible check below confirms the item
+    // is rendered (kept verbatim from the original assertion).
+    await expect(feedItems).toHaveCount(initialFeedCount + 1, { timeout: 20_000 });
     await expect(inventoryPage.locator('mat-list-item')).toBeVisible({ timeout: 20_000 });
     await expect(inventoryPage.locator('mat-chip', { hasText: 'RESERVED' }))
       .toBeVisible({ timeout: 5_000 });
