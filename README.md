@@ -166,6 +166,7 @@ Full retrospective with all three perspectives (coordinator, reviewer, implement
 - [`docs/demo-script.md`](docs/demo-script.md) — step-by-step live demo presenter guide
 - [`docs/talk-outline.md`](docs/talk-outline.md) — slide structure for a 30-minute conference talk
 - [`docs/conference-prep-handoff.md`](docs/conference-prep-handoff.md) — handoff to Codex for producing screenshots and presentation assets
+- [`docs/assets/sprint17-observable-boundary-catches.png`](docs/assets/sprint17-observable-boundary-catches.png) — reusable evidence board for the Sprint 17 reviewer catches
 
 ---
 
