@@ -27,8 +27,14 @@ fi
 
 echo "No compose plugin found (docker compose / podman compose). Falling back to plain podman commands."
 
-ENGINE=podman
-command -v docker >/dev/null 2>&1 && ENGINE=docker
+if podman info >/dev/null 2>&1; then
+  ENGINE=podman
+elif docker info >/dev/null 2>&1; then
+  ENGINE=docker
+else
+  echo "ERROR: no working podman or docker runtime for the fallback path" >&2
+  exit 1
+fi
 
 NETWORK=pub-rec-net
 
@@ -80,11 +86,7 @@ echo "Starting auth-server..."
   -e GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET:-placeholder}" \
   pub-rec/auth-server
 
-echo "Waiting for auth-server (http://localhost:9000/oauth2/jwks)..."
-for _ in $(seq 1 30); do
-  curl -sf http://localhost:9000/oauth2/jwks >/dev/null 2>&1 && break
-  sleep 2
-done
+wait_for "auth-server JWKS" 30 2 curl -sf http://localhost:9000/oauth2/jwks
 
 echo "Building order-service..."
 "$ENGINE" build -t pub-rec/order-service -f order-service/Dockerfile .
