@@ -1,61 +1,82 @@
-# AUTO-1 — Make the Codex review-dispatch automation round-aware
+# AUTO-1 — Make the Codex-app dispatch automations update-aware
 
 **Sprint:** 20 (Track B Sprint 7) — candidate
-**Type:** Process/tooling (Codex-app automation prompt, **not** repo source code)
-**Owner:** Dimitri (edits the Codex app job; coordinator has no access to that app)
+**Type:** Process/tooling (Codex-app automation prompts, **not** repo source code)
+**Owner:** Dimitri (edits the Codex app jobs; coordinator has no access to that app)
 
 ## Why this exists
 
-Sprint 19 round-2 produced a **stale false-reject**. The round-1 fix (`9b8216e`)
-was pushed and correct, but Codex "resumed" its old thread and re-stated the
-round-1 P1/P2 findings verbatim against pre-fix code, writing no new review file.
+Two Codex-app dispatch automations share the same **path/number-based dedup bug**:
+once a file has been sent for a given sprint, an *updated* version of that same
+file (same basename) is treated as "already handled" and **never re-sent**, even
+though its `LastWriteTime` advanced. The initial send is mtime-gated (only files
+newer than the setup timestamp), but the dedup is identity-gated, so re-sends of an
+updated file are silently suppressed. This bites **every** sprint that produces a
+round 2+ or a revised note.
 
-Root cause is the dispatch automation's dedup rule, which currently reads:
+### Instance A — review-dispatch (proven failure, Sprint 19)
 
-> treat a file as already handled if the senior software reviewer thread already
-> contains that exact file path **or a review request for the same sprint handoff**.
+Handoff dispatcher, target reviewer thread `019ee066-8550-78f0-811f-e6d17664c79d`.
+Dedup clause:
 
-Because a round-2 fix reuses the **same** `sprint-19-handoff.md` basename/number,
-the "same sprint handoff" clause matches and the automation **never sends a fresh
-round-2 request** — even though the handoff's `LastWriteTime` advanced. The initial
-send is mtime-gated (only files newer than the setup timestamp), but the dedup is
-sprint-number-gated, so re-sends of an updated handoff are silently suppressed.
+> already handled if the thread already contains that exact file path **or a review
+> request for the same sprint handoff**.
 
-This will recur on **every** future sprint that needs a round 2+.
+Sprint 19 round-2 fix (`9b8216e`) was pushed and correct, but the reused
+`sprint-19-handoff.md` basename matched "same sprint handoff", so no fresh round-2
+request was sent. Codex "resumed" and re-stated round-1 P1/P2 verbatim against
+pre-fix code → **stale false-reject**, no new review file written.
+
+### Instance B — demo-notes dispatch (same latent bug)
+
+Demo-material dispatcher, target Track A conference thread
+`019f0e9b-aa1d-7dc2-bbe2-ca07161956b9`, scans `docs/` for `*demo*.md`. Dedup clause:
+
+> already handled if the thread already contains that exact file path **or a request
+> for the same demo Markdown file**.
+
+Same flaw: a revised `docs/demo-notes-sprint-N.md` (e.g. updated after a round-2
+review adds demo-worthy beats or captured evidence) reuses its path and is
+suppressed → the conference/YouTube thread never gets the update.
 
 ## Scope
 
-Edit the Codex-app automation prompt only. No repository changes.
+Edit the two Codex-app automation prompts only. No repository changes.
 
-## Change
+## Change (apply to BOTH automations)
 
-Make "already handled" round-aware. Replace the sprint-number dedup with a key that
-also incorporates the handoff's freshness, e.g. one of:
+Make "already handled" freshness-aware instead of identity-only. For each, replace
+the identity dedup with a key that incorporates the file's freshness, e.g. one of:
 
-- **(sprint number + handoff LastWriteTime)** — resend when a matching handoff's
-  mtime is newer than the mtime of the last request already in the thread for that
-  sprint; **or**
-- an explicit **round marker** the coordinator writes into the handoff (e.g. a
-  `Round: N` line), dedup on `(sprint number + round)`.
+- **(file identity + LastWriteTime)** — resend when a matching file's mtime is newer
+  than the mtime of the last request already in the thread for that file; **or**
+- an explicit **round/version marker** the coordinator writes into the file (e.g. a
+  `Round: N` line in handoffs, a `Rev: N` line in demo notes), dedup on
+  `(file identity + marker)`.
 
-Keep the existing setup-timestamp floor (still ignore handoffs at/older than
-`2026-06-29T18:44:53+02:00`) and the non-numeric-basename filter.
+Keep each automation's existing setup-timestamp floor (review: ignore ≤
+`2026-06-29T18:44:53+02:00`; demo: ignore ≤ `2026-06-29T18:48:38+02:00`) and the
+existing basename filters (review: numeric `sprint-<n>-handoff.md` /
+`sprint-<n>handoff.md`, ignore non-numeric variants; demo: basename contains `demo`,
+`.md`).
 
-## Acceptance criteria (observable outcomes)
+## Acceptance criteria (observable outcomes — per automation)
 
-1. **Round-2 resend fires:** with a `sprint-<N>-handoff.md` already sent once, touch
-   it (newer mtime / bumped round marker) and confirm the automation sends a **new**
-   review request to thread `019ee066-8550-78f0-811f-e6d17664c79d` referencing that
-   sprint. Show the new thread message.
-2. **No duplicate on unchanged handoff:** re-run the automation with the handoff
-   unchanged (same mtime/round) and confirm it sends **nothing** for that sprint.
-3. **Setup-timestamp floor still holds:** a handoff at/older than the setup timestamp
-   is still not sent.
-4. **Non-numeric basenames still ignored** (e.g. `sprint-7-codex-handoff.md`).
+1. **Update resend fires:** with a file already sent once, touch it (newer mtime /
+   bumped marker) and confirm the automation sends a **new** message to the correct
+   target thread referencing that file. Show the new thread message.
+   - Review: thread `019ee066-8550-78f0-811f-e6d17664c79d`, `sprint-<N>-handoff.md`.
+   - Demo: thread `019f0e9b-aa1d-7dc2-bbe2-ca07161956b9`, `docs/demo-notes-sprint-N.md`.
+2. **No duplicate on unchanged file:** re-run with the file unchanged (same
+   mtime/marker) → sends **nothing** for that file.
+3. **Setup-timestamp floor still holds:** a file at/older than the automation's setup
+   timestamp is still not sent.
+4. **Basename filters still hold:** review still ignores non-numeric variants
+   (e.g. `sprint-7-codex-handoff.md`); demo still requires `demo` in the basename.
 
 ## Verification note
 
-This is a Codex-app prompt change, so acceptance evidence is **screenshots/thread
+These are Codex-app prompt changes, so acceptance evidence is **screenshots/thread
 messages from the Codex app**, not repo test output. State that limitation explicitly
 in the handoff — coordinator cannot exercise the Codex app directly.
 
