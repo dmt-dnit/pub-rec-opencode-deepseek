@@ -210,3 +210,119 @@ jobs:
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: snyk.sarif
+
+  # ── 5. Containerized E2E smoke test (Playwright) ─────────────────────────
+  #
+  # Stands up the full backend stack via docker compose, starts both Angular
+  # UIs on `npm start`, and runs the Playwright smoke test against them.
+  # This is the automated proof that B-6's runtime healthchecks work end-to-end.
+  #
+  # Isolated: not in any other job's `needs` — a smoke hiccup cannot mask
+  # unit-test failures. The compose build is self-contained (each service
+  # Dockerfile installs shared-model inline), so no host-side Maven step.
+  #
+  # Artifacts on failure: Playwright HTML report / traces, docker compose
+  # logs, and UI logs.
+  e2e-smoke:
+    name: e2e-smoke (containerized backend + Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Node 22 LTS
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Start backend stack
+        run: docker compose up -d --build
+
+      - name: Wait for backend healthy
+        run: |
+          set -e
+          for svc in auth-server order-service inventory-service; do
+            echo "Waiting for $svc to be healthy (timeout 180s)..."
+            timeout 180 bash -c '
+              svc="$1"
+              while true; do
+                cid="$(docker compose ps -q "$svc" 2>/dev/null || true)"
+                if [ -n "$cid" ] && [ "$(docker inspect -f "{{.State.Health.Status}}" "$cid" 2>/dev/null)" = "healthy" ]; then
+                  echo "  $svc is healthy"
+                  exit 0
+                fi
+                sleep 5
+              done
+            ' _ "$svc" || { echo "ERROR: $svc did not become healthy within 180s"; docker compose logs; exit 1; }
+          done
+          echo "All services healthy — backend ready."
+
+      - name: Start order-ui and wait
+        run: |
+          set -e
+          cd order-ui && npm ci && npm start > /tmp/order-ui.log 2>&1 &
+          echo "Waiting for http://localhost:4200 (timeout 120s)..."
+          timeout 120 bash -c "until curl -sf http://localhost:4200 > /dev/null; do sleep 3; done" || {
+            echo "ERROR: order-ui did not respond within 120s"
+            cat /tmp/order-ui.log
+            exit 1
+          }
+          echo "order-ui is responding."
+
+      - name: Start inventory-ui and wait
+        run: |
+          set -e
+          cd inventory-ui && npm ci && npm start > /tmp/inventory-ui.log 2>&1 &
+          echo "Waiting for http://localhost:4201 (timeout 120s)..."
+          timeout 120 bash -c "until curl -sf http://localhost:4201 > /dev/null; do sleep 3; done" || {
+            echo "ERROR: inventory-ui did not respond within 120s"
+            cat /tmp/inventory-ui.log
+            exit 1
+          }
+          echo "inventory-ui is responding."
+
+      - name: Run Playwright smoke test
+        run: |
+          set -e
+          cd e2e && npm ci && npx playwright install --with-deps chromium && npx playwright test
+
+      - name: Capture docker compose logs (on failure)
+        if: failure()
+        run: docker compose logs > /tmp/docker-compose.logs
+
+      - name: Upload Playwright HTML report (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/
+          if-no-files-found: ignore
+
+      - name: Upload Playwright test-results / traces (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: e2e/test-results/
+          if-no-files-found: ignore
+
+      - name: Upload docker compose logs (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-compose-logs
+          path: /tmp/docker-compose.logs
+          if-no-files-found: ignore
+
+      - name: Upload UI logs (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-logs
+          path: |
+            /tmp/order-ui.log
+            /tmp/inventory-ui.log
+          if-no-files-found: ignore
+
+      - name: Tear down stack
+        if: always()
+        run: docker compose down -v
