@@ -15,6 +15,12 @@ Codex found 3 real blockers; all fixed by opencode+DeepSeek (brief `docs/backlog
 
 **Codex re-verify:** the inventory-UI reservation feed no longer duplicates (live smoke); the Testcontainers test runs in CI; auth-server logs carry `correlationId`.
 
+### Round-2 note (2026-07-01) — re: the round-2 review's stale-artifact findings
+
+The round-2 review (`reviews/sprint-17-track-b-round-2-review.md`) confirmed all three **source** fixes are correct, but flagged that the committed `target/` jar (auth-server) and `surefire-reports/*.xml` (order-service) don't reflect them. **Root cause: `target/` is git-ignored, not committed** (`.gitignore` has covered `**/target/` since 2026-06-19). There are no committed build artifacts to refresh — the stale jar/report the review ran are **local working-copy leftovers**, not repository evidence. (CLAUDE.md's old "artifacts are committed / no .gitignore" line was outdated and caused the confusion; corrected this round.)
+
+**Authoritative fresh evidence:** (a) my own `mvnw clean verify` on all modules is green with the fixes compiled in (auth-server jar built fresh *does* contain `CorrelationIdFilter`; `OrderServiceKafkaContainerTest` uses `@Testcontainers`); (b) the **live CI run** builds every module from source (no `target/` in the tree) — that is the reproducible F1/F3 proof. **For the re-review: run `git clean -xfd` (or `mvnw clean`) before executing any jar/reading any surefire report, then rely on the live CI run.** F2's "no duplicate feed" is the containerized-smoke item.
+
 ---
 
 ## Commits (on `main`)

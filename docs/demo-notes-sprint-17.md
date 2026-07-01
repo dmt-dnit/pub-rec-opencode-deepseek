@@ -22,3 +22,17 @@ What I could not capture in this sandbox:
 
 - Fresh `mvnw verify` output, because the sandbox Java runtime cannot read the user-owned JDK security config.
 - A live browser/demo replay of the duplicate feed, because starting the full stack depends on that blocked Java path.
+
+## Round 2 follow-up
+
+Round 2 is still a good story, but the interesting failure shifted from source correctness to delivery fidelity:
+
+- The source fixes for all three round-1 findings are present and materially better.
+- The repo's committed artifacts are stale enough that one reviewer-only claim already fails when exercised locally: the committed `auth-server/target/auth-server-0.0.1-SNAPSHOT.jar` does not contain `CorrelationIdFilter`, does not echo `X-Correlation-Id`, and therefore cannot demonstrate the claimed "auth-server logs carry correlationId" outcome.
+- The committed Surefire XML for `OrderServiceKafkaContainerTest` still points to the old `Assumptions.assumeTrue(...)` skip path, even though the source now uses the correct `@Testcontainers` / `@Container` pattern.
+
+Conference framing:
+
+- This is a stronger lesson than "the fix was wrong." The implementation changed in the right direction, but the handoff still overstated what had been proven because the deliverable state mixed fresh source with stale runtime/test artifacts.
+- Independent review here is not just code review; it is state-integrity review. In a multi-agent loop, "source is fixed" and "handoff is reproducible" are different claims.
+- If you present this, it is a clean example of why an AI workflow needs explicit rules for artifact freshness, not only code diffs and green local summaries.

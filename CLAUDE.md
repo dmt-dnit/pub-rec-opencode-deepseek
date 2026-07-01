@@ -13,7 +13,7 @@ A demo/learning monorepo of independent services that together illustrate JWT-ba
 
 See `docs/adr/0001-event-driven-showcase-architecture.md` for the canonical architecture description.
 
-There is no root build — each subdirectory is built/run independently. Build artifacts (`target/`, `dist/`) are committed to git — there is no `.gitignore`. Don't be alarmed by `git status` showing changes under those paths after a build; check whether the user actually wants them committed before doing so.
+There is no root build — each subdirectory is built/run independently. Build artifacts are **git-ignored** (`.gitignore` covers `**/target/`, `**/dist/`, `**/node_modules/`, `**/.angular/`, etc.) — they are NOT committed. **Consequence for reviewers/CI: never treat a `target/` jar or `surefire-reports/*.xml` in a working copy as evidence — it may be stale local build output. Always `mvnw clean verify` (or read the live CI run, which builds from source) before judging behavior.** (History: artifacts *were* committed pre-2026-06-19; the `.gitignore` added then stopped that, but stale local `target/` dirs can linger in a checkout — `git clean -xfd` clears them.)
 
 ## Multi-agent development workflow
 
