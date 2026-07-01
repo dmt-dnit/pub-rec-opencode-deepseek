@@ -32,6 +32,21 @@ command -v docker >/dev/null 2>&1 && ENGINE=docker
 
 NETWORK=pub-rec-net
 
+wait_for() {
+  local desc="$1" max="$2" interval="$3"
+  shift 3
+  echo "Waiting for $desc..."
+  for _ in $(seq 1 "$max"); do
+    if "$@" >/dev/null 2>&1; then
+      echo "$desc ready."
+      return 0
+    fi
+    sleep "$interval"
+  done
+  echo "ERROR: $desc not ready after $max attempts." >&2
+  exit 1
+}
+
 echo "Cleaning up any previous containers from this stack..."
 for c in zookeeper kafka auth-server order-service inventory-service; do
   "$ENGINE" rm -f "$c" >/dev/null 2>&1 || true
@@ -42,7 +57,7 @@ echo "Starting zookeeper..."
 "$ENGINE" run -d --name zookeeper --network "$NETWORK" -p 2181:2181 \
   -e ZOOKEEPER_CLIENT_PORT=2181 -e ZOOKEEPER_TICK_TIME=2000 \
   docker.io/confluentinc/cp-zookeeper:7.8.0
-sleep 8
+wait_for "zookeeper" 15 2 "$ENGINE" exec zookeeper bash -c 'echo > /dev/tcp/localhost/2181'
 
 echo "Starting kafka..."
 "$ENGINE" run -d --name kafka --network "$NETWORK" -p 9092:9092 \
@@ -55,7 +70,7 @@ echo "Starting kafka..."
   -e KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1 \
   -e KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1 \
   docker.io/confluentinc/cp-kafka:7.8.0
-sleep 10
+wait_for "kafka broker" 30 3 "$ENGINE" exec kafka kafka-broker-api-versions --bootstrap-server localhost:9092
 
 echo "Building auth-server..."
 "$ENGINE" build -t pub-rec/auth-server -f auth-server/Dockerfile .
@@ -86,6 +101,9 @@ echo "Starting inventory-service..."
   -e SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092 \
   -e SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=http://auth-server:9000/oauth2/jwks \
   pub-rec/inventory-service
+
+wait_for "order-service health" 30 2 curl -sf http://localhost:8080/actuator/health
+wait_for "inventory-service health" 30 2 curl -sf http://localhost:8081/actuator/health
 
 echo
 echo "Backend stack starting. Check status with: $ENGINE ps"
