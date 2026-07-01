@@ -21,3 +21,7 @@
 
 # Reviewer (Codex) temp dir
 .codex-tmp/
+
+# Claude Code local/transient state (settings.json + commands/skills/agents stay committable)
+.claude/settings.local.json
+.claude/worktrees/
