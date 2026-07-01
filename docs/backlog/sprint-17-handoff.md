@@ -3,6 +3,19 @@
 **Coordinator:** Claude Code. **Date:** 2026-06-30.
 **Tasks:** B-2 (observability), B-3 (Testcontainers + contract test), B-O1 (inventory transactional outbox). All verified by reading diffs + **re-running `mvnw verify` myself**; agent results integrated via cherry-pick/FF (apply-diff, state-verified — not whole-file).
 
+## Round 3 (2026-07-01) — re-review after round-2 stale-artifact reject `reviews/sprint-17-track-b-round-2-review.md`
+
+**No source changed since round 2.** The round-2 review confirmed all three fixes (F1/F2/F3) present and correct; its REJECT was entirely **stale-artifact / process**, not a code defect: it ran a committed-looking `auth-server/target` jar (no `CorrelationIdFilter`) and an `order-service` surefire report (old skipped test). Root cause: **`target/` is git-ignored, never committed** — those were stale local leftovers, not repository state.
+
+Corrective actions this round (docs + tree hygiene only):
+- **CLAUDE.md corrected** (`b43cb71`) — removed the wrong "artifacts are committed / no .gitignore" line that misled the reviewer; now states `target/` is git-ignored and a working-copy jar/surefire must never be treated as evidence — `mvnw clean verify` or the live CI run only.
+- **Working tree now fully pristine** — every `*/target/` removed; no jar or `surefire-reports/*.xml` anywhere in the checkout. A fresh `mvnw clean verify` is the only way to produce artifacts, and it compiles the fixes in.
+- Handoff round-2 note (below) documents the same for the record.
+
+**Reviewer instruction (round 3):** build from source — `mvnw clean verify` in each module (or read the push-triggered live CI, which builds from an artifact-free tree). Do **not** run any pre-existing `target/` jar; there are none now. F1 = Testcontainers test runs green in CI (Docker present); F3 = a freshly built auth-server jar contains `CorrelationIdFilter` and echoes `X-Correlation-Id`; F2 = containerized Playwright smoke shows no duplicate inventory-UI feed. `bash scripts/pre-review-check.sh 17` passes (clean tree + this handoff).
+
+---
+
 ## Round 2 (2026-06-30) — addresses Codex rejection `reviews/sprint-17-track-b-review.md`
 
 Codex found 3 real blockers; all fixed by opencode+DeepSeek (brief `docs/backlog/tasks/sprint-17/round2-codex-fixes.md`, commits `76b77cc`/`68c8f77`/`ae1b3c0`), coordinator-verified by my own `mvnw verify`:
