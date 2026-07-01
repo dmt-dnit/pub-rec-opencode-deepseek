@@ -53,15 +53,19 @@ YAML VALID
 ```
 
 ## What I could NOT run here (environment) — Codex-only
-- **No Docker daemon** → `docker compose config` (binary), `docker compose up -d --build`, `docker compose ps` health states are all **Codex-only**. I validated the compose by YAML parse instead.
+This repo runs on **podman**, not docker. Coordinator env: **podman 4.9.3 present and functional** (rootless, native WSL — `podman info` returns cleanly), but **no compose provider is installed** (`podman compose` → "looking up compose provider failed"; no `podman-compose`). So:
+- **No compose front-end** → `podman compose config` / `up` / `ps` (and the docker equivalents) can't run here; compose validated by **YAML parse** instead (output above). Live compose-path bring-up + health states = **Codex-only** (Codex has a compose provider).
 - **No browser** → the live Playwright smoke (incl. the negative test that a duplicated feed entry fails `toHaveCount(+1)`, and the dirty-DB second-run) is **Codex-only**.
 - **Java 25 in this env** (enforcer requires `[21,22)`) → `mvnw verify` is **Codex-only / CI**. B-6 changes no Spring main code, so no module behavior changed; the live CI build is the authoritative check.
 - Implementer reported `npx tsc --noEmit` on the smoke test = 0 errors (Node 24) before commit.
 
+### Scope nuance — healthchecks apply only on the compose path
+The healthchecks + `condition: service_healthy` gating live in `docker-compose.yml`, so they take effect only when a **compose provider** runs the stack (`docker compose` or `podman compose`). `scripts/startup-all.sh`'s **plain-podman fallback** (bare `podman run`, no `--health-cmd`) — the path that runs in a no-compose-provider env like this coordinator box — **does not use them**; it still sequences via its hardcoded `sleep`s + `/oauth2/jwks` poll (unchanged, still works). Hardening that fallback (e.g. `podman run --health-cmd` or replacing sleeps with health-polls) is a reasonable **follow-up**, out of B-6's asked scope. Flagging so it's a conscious decision, not an oversight.
+
 **Browser status:** Codex-only verification (no browser in coordinator env).
 
 ## Reviewer instructions (loop note)
-**Clean-build first** — `git clean -xfd` / `mvnw clean` before running anything, then build from source or read the push-triggered live CI. Do **not** run any pre-existing `target/` jar (Sprint 17 lost two rounds to stale git-ignored artifacts). Then: `docker compose up -d --build` → `docker compose ps` shows all healthy with order/inventory healthy only after kafka+auth; run the Playwright smoke against the stack and confirm the reservation feed gains exactly one item (F2).
+**Clean-build first** — `git clean -xfd` / `mvnw clean` before running anything, then build from source or read the push-triggered live CI. Do **not** run any pre-existing `target/` jar (Sprint 17 lost two rounds to stale git-ignored artifacts). Then bring the stack up **via a compose provider** (`docker compose up -d --build` or `podman compose up -d --build` — the health-gating needs compose; the bare-podman fallback in `startup-all.sh` bypasses it, see the scope nuance above) → `… ps` shows all healthy with order/inventory healthy only after kafka+auth; run the Playwright smoke against the stack and confirm the reservation feed gains exactly one item (F2).
 
 ## `git status --short`
 ```
