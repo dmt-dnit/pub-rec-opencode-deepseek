@@ -3,6 +3,7 @@
 **Coordinator:** Claude Code. **Date:** 2026-07-01.
 **Tasks:** B-9 (CI-automate the containerized E2E smoke) + B-8 (harden the bare-podman fallback).
 **Implementer:** **opencode + DeepSeek** (`deepseek-v4-pro`) for both, per the standing default. Diffs coordinator-reviewed by reading; integrated onto `main`.
+Review-Target-Commit: 9b8216e
 
 ## Round 2 (2026-07-01) — addresses Codex reject `reviews/sprint-19-track-b-review.md`
 Codex round-1 REJECT: B-9 clean (no source defect, live CI green), **two B-8 blockers** in `scripts/startup-all.sh`, both now fixed in `9b8216e` (opencode+DeepSeek, single repo-root run; brief `docs/backlog/tasks/sprint-19/round2-codex-fixes.md`):
