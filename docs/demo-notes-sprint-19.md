@@ -23,3 +23,15 @@ Presentation angle:
 - Sprint 18 was about proving a concurrency fix at the UI boundary.
 - Sprint 19 is the next layer up: automating that proof in CI and hardening the developer fallback path.
 - The review result is useful precisely because it separates the two: CI automation looks on the right track, fallback reliability still has real edge-case bugs.
+
+## Round 2 follow-up
+
+Round 2 is the satisfying close to that story:
+
+- The fallback bugs were both real and both small: one non-failing auth wait loop and one wrong engine-selection heuristic.
+- The re-review against `9b8216e` clears B-8 at source level because the script now uses the same fail-fast `wait_for()` pattern for auth JWKS and chooses Podman/Docker based on a working daemon, not CLI presence.
+
+Why that helps the narrative:
+
+- It shows the review loop doing what it should do on operational code, not just application code: find a precise failure mode, get a narrow fix, and then clear it with concrete file evidence.
+- It also pairs well with Sprint 19's CI story: B-9 was already structurally sound, while B-8 needed one more hardening pass. That contrast is believable and useful in a talk.
