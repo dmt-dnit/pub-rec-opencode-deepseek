@@ -120,7 +120,10 @@ Use this only if there is time after the Track A walkthrough.
 - Sprint 14: local checks were green, but review caught a Linux CI metadata defect in the Unix Maven wrapper bits.
 - Sprint 15: CI was green, but the live container smoke failed because both resource services hardcoded `localhost` for JWKS; the same smoke later proved the fix.
 - Sprint 16: Playwright and OpenAPI were not enough; the security scanner itself had to be proven in live CI, which ended with Snyk SCA.
-- Sprint 17: "exactly-once" still needs observable-boundary evidence. The reusable code-review anchors are:
+- Sprint 17: "exactly-once" still needs observable-boundary evidence. Round 1 found a Kafka Testcontainers lifecycle gap plus an outbox relay that could still duplicate UI-visible feed items. Round 2 improved the source, but the handoff still mixed fresh source with stale runtime and test artifacts, which is the cleaner state-integrity lesson.
+- Sprint 18: compose-path readiness and the stricter "feed count increased by exactly one" browser assertion were source-sound, but runtime proof stayed environment-blocked. That is the clean evidence-discipline version of the story: sometimes the right verdict is "source is sound, runtime proof still pending."
+- Sprint 19: the dedicated `e2e-smoke` CI job was structurally sound in round 1, while the fallback path still had real auth-wait and engine-selection bugs. Round 2 fixed those narrowly on `9b8216e`: auth JWKS now uses the same fail-fast `wait_for()` pattern and Podman/Docker selection is based on a working daemon, not CLI presence.
+- Sprint 17 reusable code-review anchors:
   `order-service/src/test/java/com/example/orderservice/OrderServiceKafkaContainerTest.java`
   `inventory-service/src/main/java/com/example/inventoryservice/service/OutboxRelay.java`
   `inventory-service/src/main/java/com/example/inventoryservice/receiver/OrderEventListener.java`
@@ -134,7 +137,11 @@ Use captured assets instead of inventing historical screenshots:
 - `docs/demo-notes-sprint-15.md`
 - `docs/demo-notes-sprint-16.md`
 - `docs/demo-notes-sprint-17.md`
-- `docs/assets/sprint17-observable-boundary-catches.png`
+- `docs/demo-notes-sprint-18.md`
+- `docs/demo-notes-sprint-19.md`
+- `docs/assets/sprint17-observable-boundary-state-integrity.png`
+- `docs/assets/sprint18-source-sound-runtime-pending.png`
+- `docs/assets/sprint19-ci-hardening-vs-fallback-gaps.png`
 
 ## Timing
 
@@ -151,8 +158,8 @@ Use captured assets instead of inventing historical screenshots:
 2. 1:30-3:30 — roles, handoffs, reviewer gate
 3. 3:30-6:30 — live demo
 4. 6:30-8:30 — Sprint 9/10 and Sprint 11-13 failures
-5. 8:30-10:00 — Track B epilogue through Sprint 17
+5. 8:30-10:00 — Track B epilogue through Sprint 19
 
 ## Capture Note
 
-The Sprint 17 note explicitly says no fresh Maven verify output or live duplicate-feed replay was available in that sandbox. Keep that limitation visible. Use the code paths and review framing as reusable evidence; do not substitute invented screenshots for missing runtime capture.
+The Sprint 17 note explicitly says no fresh Maven verify output or live duplicate-feed replay was available in that sandbox, and its round-2 follow-up says the handoff also mixed fresh source with stale runtime/test artifacts. Keep those limitations visible. The Sprint 18 note explicitly preserves the "source is sound, runtime proof still pending" boundary. Use the code paths, review framing, and evidence boards as reusable evidence; do not substitute invented screenshots for missing runtime capture.

@@ -70,14 +70,18 @@ Speaker note: selectors are part of the product contract, not test garnish.
 - Sprint 14: local green, Linux CI metadata red, then fixed.
 - Sprint 15: CI green, runtime red, then runtime green.
 - Sprint 16: runtime green, scanner red, then live Snyk green.
-- Sprint 17: plausible Testcontainers and outbox changes, but reviewer still catches lifecycle and observable-boundary flaws.
+- Sprint 17: plausible Testcontainers and outbox changes, then a round-2 state-integrity catch when fresh source and stale artifacts were mixed in the same handoff.
+- Sprint 18: source-sound compose gating and browser assertion hardening, but runtime proof still pending in that environment.
+- Sprint 19: CI smoke job structurally sound, fallback path initially still weak, then narrowly fixed and source-cleared on `9b8216e`.
 
 Suggested visual order:
 
 1. `docs/demo-notes-sprint-14.md`
 2. `docs/demo-notes-sprint-15.md`
 3. `docs/demo-notes-sprint-16.md`
-4. `docs/assets/sprint17-observable-boundary-catches.png`
+4. `docs/assets/sprint17-observable-boundary-state-integrity.png`
+5. `docs/assets/sprint18-source-sound-runtime-pending.png`
+6. `docs/assets/sprint19-ci-hardening-vs-fallback-gaps.png`
 
 ### 9. Q&A - 1 min
 
@@ -89,9 +93,10 @@ Prompt: "Where would you put the hard reviewer gate in your own agent workflow?"
 2. 1:00-3:00 — the three-role workflow
 3. 3:00-5:30 — live or recorded saga walkthrough
 4. 5:30-8:30 — Angular change detection and selector failures
-5. 8:30-11:30 — Track B reliability and security evidence
-6. 11:30-13:30 — Sprint 17 exactly-once boundary lesson
-7. 13:30-15:00 — what to copy into your own workflow
+5. 8:30-10:30 — Track B reliability and security evidence
+6. 10:30-12:30 — Sprint 17 state-integrity lesson and Sprint 18 evidence-discipline lesson
+7. 12:30-14:00 — Sprint 19 operational hardening split: CI sound, fallback fixed on re-review
+8. 14:00-15:00 — what to copy into your own workflow
 
 ## Slide List
 
@@ -107,8 +112,10 @@ Prompt: "Where would you put the hard reviewer gate in your own agent workflow?"
 10. Sprint 14: CI Failure-To-Green
 11. Sprint 15: Runtime Failure-To-Green
 12. Sprint 16: Security Visibility Failure-To-Green
-13. Sprint 17: Observable Boundary Catches
-14. Q&A
+13. Sprint 17: Observable Boundary And State-Integrity Catches
+14. Sprint 18: Source Sound, Runtime Proof Pending
+15. Sprint 19: CI Hardening Versus Fallback Gaps
+16. Q&A
 
 ## Speaker Notes
 
@@ -130,4 +137,12 @@ Sprint 16:
 
 Sprint 17:
 
-"A Testcontainers test can still be wired incorrectly, and an outbox can still duplicate user-visible events. Exactly-once claims have to be proven where the user sees behavior."
+"A Testcontainers test can still be wired incorrectly, and an outbox can still duplicate user-visible events. Exactly-once claims have to be proven where the user sees behavior. Then the round-2 follow-up adds the next rule: even when source improves, stale runtime and test artifacts can still make the handoff non-reproducible."
+
+Sprint 18:
+
+"Sprint 18 is the mature reviewer verdict. The code looked right, the compose gating and the stricter feed-count assertion were source-sound, and the reviewer still refused to overstate it because live compose and browser proof were blocked by the environment. That is evidence-quality review, not just code review."
+
+Sprint 19:
+
+"Sprint 19 is operational hardening under review. The CI smoke job was already structurally sound. The fallback path was not: auth readiness could fail open, and Podman-vs-Docker selection was based on CLI presence instead of a working daemon. Round 2 fixed both narrowly on `9b8216e`. That is the kind of precise, believable hardening loop you want in a real agent workflow."

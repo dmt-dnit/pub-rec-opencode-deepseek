@@ -156,6 +156,8 @@ Track A (Sprints 1–13) took 13 sprint rounds to close — not because the syst
 4. **Sprint 11** — `mat-table` stayed empty despite all CD fixes. Root cause required reading compiled Angular 22 source. Fix: `MatTableDataSource`.
 5. **Sprint 13** — Track A approved. Full Playwright smoke passes against a non-empty local DB.
 
+Track B extends that story in ways that are useful for conference or YouTube framing. Sprint 14 showed that local green is not target green when Linux CI metadata can still be wrong. Sprint 15 showed that hosted CI green is not runtime green when a hardcoded JWKS URL breaks JWT validation inside containers. Sprint 16 showed that runtime green is not dependency/security green until the scanner gate itself is proven live. Sprint 17 added the observable-boundary lesson and then a round-2 state-integrity lesson: a fix can move the source in the right direction while the handoff still mixes fresh source with stale runtime or test artifacts. Sprint 18 is the evidence-discipline version of that point: source-sound compose gating and browser assertions, but runtime proof still pending because the environment could not run the full compose/browser path. Sprint 19 moved one layer higher into operational hardening: the `e2e-smoke` CI job was structurally sound, while the fallback path needed one more narrow hardening pass before the re-review on `9b8216e` cleared it.
+
 Full retrospective with all three perspectives (coordinator, reviewer, implementer): [`docs/backlog/track-a-retro.md`](docs/backlog/track-a-retro.md)
 
 ---
@@ -166,7 +168,9 @@ Full retrospective with all three perspectives (coordinator, reviewer, implement
 - [`docs/demo-script.md`](docs/demo-script.md) — step-by-step live demo presenter guide
 - [`docs/talk-outline.md`](docs/talk-outline.md) — slide structure for a 30-minute conference talk
 - [`docs/conference-prep-handoff.md`](docs/conference-prep-handoff.md) — handoff to Codex for producing screenshots and presentation assets
-- [`docs/assets/sprint17-observable-boundary-catches.png`](docs/assets/sprint17-observable-boundary-catches.png) — reusable evidence board for the Sprint 17 reviewer catches
+- [`docs/assets/sprint17-observable-boundary-state-integrity.png`](docs/assets/sprint17-observable-boundary-state-integrity.png) — reusable evidence board for the Sprint 17 observable-boundary and state-integrity catches
+- [`docs/assets/sprint18-source-sound-runtime-pending.png`](docs/assets/sprint18-source-sound-runtime-pending.png) — reviewer-evidence board for the Sprint 18 source-sound/runtime-pending outcome
+- [`docs/assets/sprint19-ci-hardening-vs-fallback-gaps.png`](docs/assets/sprint19-ci-hardening-vs-fallback-gaps.png) — operational-hardening evidence board for Sprint 19
 
 ---
 
