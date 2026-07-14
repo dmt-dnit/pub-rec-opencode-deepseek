@@ -39,6 +39,15 @@ This is the showcase project for Dimitri and his son's IT startup, built with a 
 4.5. When the verdict lands, run `bash scripts/verify-review.sh <sprint-number>` before acting on it — this is the mechanical stale-review gate that closes the loop (added Sprint 20, AUTO-2; born from the Sprint 19 stale false-reject where a "resumed" Codex review re-stated round-1 findings against pre-fix code). It picks the highest-round review file, parses the reviewed commit + verdict, and returns: **exit 0 = FRESH+ACCEPT** (verdict trustworthy → close the sprint), **exit 2 = STALE** (the review did not inspect `Review-Target-Commit` → do NOT trust the verdict; re-request a fresh review — this is the AUTO-1 dedup symptom), **exit 3 = FRESH+REJECT** (genuine blocker → next sprint's backlog), **exit 4 = UNKNOWN** (missing `Review-Target-Commit` in the handoff, unparseable verdict, or unknown commit → fix the metadata, don't guess). Only exit 0 may close a sprint.
 5. Reject → blockers become the next sprint's backlog. Accept → next sprint/track starts.
 
+### Merge gate: direct-to-main vs. review-branch (decided 2026-07-14, Sprint 21)
+
+Two tiers, chosen when the sprint is scoped:
+
+- **Mechanical/config-only work** — dependency version bumps (Maven plugins, npm patch bumps, GitHub Actions versions), docs, lockfile-only changes with no behavior change. Commit **and push** directly to `main`, same as every sprint to date. Codex review stays post-hoc. Low blast radius, trivially revertible, no reason to slow this down.
+- **Logic-bearing work** — anything with runtime behavior, security implications, or service-config that changes behavior — and **unconditionally** anything the AUTO-3 operational driver pushes unattended. Push to a dedicated review branch first; Codex reviews that branch/commit; `main` is fast-forwarded/merged only after a genuine ACCEPT (`scripts/verify-review.sh` exit 0). Do not push this tier directly to `main`.
+
+Why: for 21 sprints, Codex review has been post-hoc — code lands on `main` (and gets pushed to `origin`) before Codex ever sees it, and a REJECT just becomes next sprint's backlog rather than blocking anything. That was a deliberate, cheap trade as long as this repo is staging-grade and nothing else consumes `main` between commit and review (see `[[project-automation-roadmap]]`: the human-approval gate was always meant to live at a future prod boundary, not here). The cost showed up concretely twice — Sprint 16 round-1's silently-reverted SB-3 and Sprint 19 round-1's non-fail-fast JWKS loop both sat live on `main` for real time before the fix landed. That cost stays bounded only because a human was still watching every push. Once the AUTO-3 operational driver pushes to `origin/main` on a schedule with no one watching, post-hoc review stops being a quality signal and becomes the only gate — so for that tier, review has to happen before the code is live on the shared branch, not after.
+
 ### Who implements what
 
 Default: opencode+DeepSeek implement all code changes via isolated worktrees. Claude is coordinator, not implementer.
@@ -71,6 +80,7 @@ This is the compact ruleset distilled from the Track A retrospective. Full conte
 9. `npm audit --omit=dev` is the pass/fail signal. Full audit goes in caveats, not the scorecard.
 10. Update CLAUDE.md status snapshot every sprint.
 11. When a Codex verdict lands, run `bash scripts/verify-review.sh <N>` and act on the exit code (0 = close · 2 = STALE, re-request · 3 = genuine reject → backlog · 4 = fix metadata). A STALE or UNKNOWN result **never** closes a sprint. The handoff must carry `Review-Target-Commit:` for this to resolve without passing the sha explicitly.
+12. Classify each task mechanical vs. logic-bearing at scoping time (see "Merge gate" above). Mechanical → push straight to `main`. Logic-bearing → push to a review branch, hold `main` until Codex ACCEPTs.
 
 **Reviewer (Codex) — every review:**
 1. Check acceptance criteria format — flag "use this locator" criteria, don't just test against them.
