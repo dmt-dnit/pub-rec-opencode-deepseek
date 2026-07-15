@@ -2,6 +2,7 @@ import { Injectable, NgZone, OnDestroy } from '@angular/core';
 import { Client, Message } from '@stomp/stompjs';
 import { Observable, Subject } from 'rxjs';
 import { Order } from '../models/user.model';
+import { environment } from '../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class WebSocketService implements OnDestroy {
@@ -11,8 +12,11 @@ export class WebSocketService implements OnDestroy {
 
   constructor(private zone: NgZone) {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const brokerURL = environment.wsBase
+      ? `${environment.wsBase}/ws`
+      : `${protocol}//${window.location.host}/ws`;
     this.client = new Client({
-      brokerURL: `${protocol}//${window.location.host}/ws`,
+      brokerURL,
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,

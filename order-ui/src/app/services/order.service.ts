@@ -2,10 +2,11 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Order, OrderLineItemRequest } from '../models/user.model';
+import { environment } from '../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class OrderService {
-  private apiBase = '/api/orders';
+  private apiBase = `${environment.ordersApiBase}/api/orders`;
 
   constructor(private http: HttpClient) {}
 
