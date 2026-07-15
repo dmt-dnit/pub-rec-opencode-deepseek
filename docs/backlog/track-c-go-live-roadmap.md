@@ -82,13 +82,20 @@ about them changes for this project to land.
   current compose still runs separate ZooKeeper + Kafka containers (Confluent 7.8.0) —
   collapsing to single-process **KRaft mode** would shave one JVM off the permanent
   footprint, worth doing opportunistically, not blocking.
-- Nginx vhosts + subdomains (pick a naming convention — e.g. `saga-auth.dnit.be`,
-  `saga-orders.dnit.be`, `saga-inventory.dnit.be`, or nest under a single
-  `saga-demo.dnit.be` path-based proxy) + TLS via the same Let's Encrypt/Nginx pattern
-  already in use for `dnit.be`.
+- **Subdomains — decided 2026-07-15:** `saga-auth.dnit.be`, `saga-orders.dnit.be`,
+  `saga-inventory.dnit.be` (mirrors the existing `app.petshop.dnit.be` pattern) + TLS via
+  the same Let's Encrypt/Nginx pattern already in use for `dnit.be`.
 - GitHub Actions deploy workflow mirroring `deploy-backend-production.yml` — manual
   dispatch to start, not auto-deploy-on-push, given this is a demo app where you want to
   control exactly when the public instance changes.
+- **Scoping split for the actual sprint brief:** implementers (opencode+DeepSeek, normal
+  worktree pipeline) author the deploy *artifacts* in-repo — systemd unit files, Nginx
+  vhost templates, the GitHub Actions workflow — coordinator-reviewed the same way as
+  any other logic-bearing task. The first **live application** of those onto `dnit-vps`
+  (copying units, `systemctl enable/start`, live Nginx reload, requesting the Let's
+  Encrypt certs) is a separate, explicitly-confirmed step done with Dimitri's sign-off in
+  the loop — not something a worktree agent does autonomously against a box that already
+  serves a paying customer.
 
 ### Phase 4 — frontend hosting on Vercel (reuses the existing pattern exactly)
 - `vercel.json` rewrites + env-based API base URL pointing at Phase 3's subdomains.
