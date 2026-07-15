@@ -8,6 +8,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDividerModule } from '@angular/material/divider';
 import { AuthService } from '../../services/auth.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
     selector: 'app-login',
@@ -70,6 +71,6 @@ export class LoginComponent {
   }
 
   loginWithGoogle(): void {
-    window.location.href = '/oauth2/authorization/google';
+    window.location.href = `${environment.authApiBase}/oauth2/authorization/google`;
   }
 }
