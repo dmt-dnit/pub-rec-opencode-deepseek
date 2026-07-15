@@ -182,11 +182,19 @@ sudo visudo -f /etc/sudoers.d/pubrec-deploy
 ```
 Contents:
 ```
-Cmnd_Alias PUBREC_SYSTEMCTL = /usr/bin/systemctl stop pubrec-auth, /usr/bin/systemctl start pubrec-auth, /usr/bin/systemctl status pubrec-auth, /usr/bin/systemctl stop pubrec-order, /usr/bin/systemctl start pubrec-order, /usr/bin/systemctl status pubrec-order, /usr/bin/systemctl stop pubrec-inventory, /usr/bin/systemctl start pubrec-inventory, /usr/bin/systemctl status pubrec-inventory
+Cmnd_Alias PUBREC_SYSTEMCTL = /usr/bin/systemctl stop pubrec-auth, /usr/bin/systemctl start pubrec-auth, /usr/bin/systemctl status pubrec-auth --no-pager, /usr/bin/systemctl stop pubrec-order, /usr/bin/systemctl start pubrec-order, /usr/bin/systemctl status pubrec-order --no-pager, /usr/bin/systemctl stop pubrec-inventory, /usr/bin/systemctl start pubrec-inventory, /usr/bin/systemctl status pubrec-inventory --no-pager
 Cmnd_Alias PUBREC_DEPLOY = /usr/bin/mv /tmp/backend.jar /opt/pubrec/auth/backend.jar, /usr/bin/mv /tmp/backend.jar /opt/pubrec/order/backend.jar, /usr/bin/mv /tmp/backend.jar /opt/pubrec/inventory/backend.jar, /usr/bin/chown pubrec\:pubrec /opt/pubrec/auth/backend.jar, /usr/bin/chown pubrec\:pubrec /opt/pubrec/order/backend.jar, /usr/bin/chown pubrec\:pubrec /opt/pubrec/inventory/backend.jar
 administrator ALL=(root) NOPASSWD: PUBREC_SYSTEMCTL, PUBREC_DEPLOY
 ```
 `visudo` validates syntax before saving — won't let you lock yourself out with a typo.
+
+**Note (found live, 2026-07-15):** the `status` entries must include `--no-pager` —
+`deploy/scripts/deploy-backend.sh` calls `sudo systemctl status "$SERVICE" --no-pager`
+exactly, and sudoers command matching requires an exact argument match. The first
+version of this rule omitted the flag, which passed a manual `sudo -n systemctl status
+pubrec-auth` check but would have failed the real deploy script's final step (and, with
+`set -euo pipefail`, failed the whole script) despite `stop`/`mv`/`chown`/`start` all
+succeeding. Caught and corrected before Phase 4.
 
 Create the GitHub secrets and `Production` environment (repo Settings → Environments,
 then Secrets), on your own machine:
