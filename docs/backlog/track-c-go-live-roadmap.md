@@ -14,13 +14,14 @@ shared-temp-path race condition across the three deploy workflows that briefly c
 `pubrec-auth` to run inventory-service's jar — both fixed, both documented in the
 runbook.
 
-**New gap surfaced, not yet scoped as a task:** there is no Kafka broker deployed on
-`dnit-vps` at all. `order-service`/`inventory-service` are healthy (Spring Kafka retries
-non-blocking in the background), but the actual saga — the whole point of the demo —
-won't work end-to-end until a broker exists there. This was missed when Sprint 22 was
-scoped; the roadmap's original "Kafka: always-on" resource-budget decision never got
-turned into deploy artifacts. Needs its own task before Phase 4 (Vercel frontends) is
-worth doing, since the frontends have nothing to demo without a working saga.
+**Kafka gap — artifacts done, live-apply pending (2026-07-15):** Sprint 23 delivered
+`deploy/docker-compose/kafka-vps.yml` + `deploy/systemd/pubrec-kafka.service`, cleared
+Codex round 1 (`1728fcd`) — loopback-only port binding confirmed both by the coordinator
+(direct diff against `order-service/docker-compose.yml`) and independently by Codex
+(cross-checked against both services' actual `application.yml` client config). Not yet
+installed on the box. Once live-applied, still blocks Phase 4 (Vercel frontends) in
+practice until confirmed working end-to-end — no point deploying UIs with nothing
+working behind them.
 
 ## Ground truth this roadmap is built on
 
@@ -120,16 +121,17 @@ race). **What this phase did NOT cover, discovered only once live: Kafka.** See 
   the loop — not something a worktree agent does autonomously against a box that already
   serves a paying customer.
 
-### Phase 3.5 — deploy a Kafka broker on `dnit-vps` (new, unscoped, found 2026-07-15)
+### Phase 3.5 — deploy a Kafka broker on `dnit-vps` — **artifacts DONE 2026-07-15, live-apply pending**
+Sprint 23 (Codex-reviewed, `1728fcd`) delivered `deploy/docker-compose/kafka-vps.yml`
+(loopback-bound, `restart: unless-stopped`, byte-identical Kafka/ZooKeeper config to
+local dev otherwise) + `deploy/systemd/pubrec-kafka.service` + a runbook Phase 3.5
+section with an explicit port-binding verification step. Not yet installed on the box.
 - `order-service`/`inventory-service` are live and healthy but their Kafka listeners are
-  stuck retrying `localhost:9092` forever — there is no broker on the box. The saga (the
-  actual demo) cannot work until this exists.
-- Likely shape: adapt `order-service/docker-compose.yml`'s Confluent Kafka+ZooKeeper
-  services to run on the VPS (ports 2181/9092, confirmed free during Track C's port
-  scan) — either as a `docker-compose`-managed pair (matches how this project already
-  runs Kafka locally) or, if going for the "shave a JVM off the footprint" KRaft
-  single-process mode noted under old Phase 3, that decision should get made here, not
-  deferred again.
+  stuck retrying `localhost:9092` forever — there is no broker on the box yet. The saga
+  (the actual demo) cannot work until the artifacts above are live-applied.
+- KRaft single-process mode (shaving one JVM off the footprint) remains an optional,
+  lower-priority future optimization, not part of this phase — deferred deliberately,
+  not by oversight.
 - This blocks Phase 4 in practice, if not formally: there's nothing worth demoing on the
   Vercel-hosted frontends without a working saga behind them.
 
