@@ -90,7 +90,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
-        cfg.setAllowedOrigins(List.of("http://localhost:4200", "http://localhost:4201"));
+        cfg.setAllowedOrigins(List.of("http://localhost:4200", "http://localhost:4201", "https://pub-rec-saga-orders-ui.vercel.app", "https://pub-rec-saga-inventory-ui.vercel.app"));
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         cfg.setAllowedHeaders(List.of("*"));
         cfg.setAllowCredentials(true);
