@@ -4,13 +4,23 @@
 "what Track C is."
 
 **Status update (2026-07-15):** Phase 1 done (AUTO-1 landed + header-contract reminder
-delivered to Codex). Phase 3's **artifact-authoring** half is done — Sprint 22, cleared
-2026-07-15 after a genuine round-1 REJECT (SSH host-key pinning + Nginx `/ws` scoping,
-both fixed in round 2, `341554b`). **Next up: the live-apply session** (create the
-`pubrec` user/directories on `dnit-vps`, install the systemd units and Nginx vhosts,
-request Let's Encrypt certs, create the GitHub secrets/`Production` Environment) —
-scheduled separately with Dimitri in the loop, not yet started. See Sprint 22's handoff
-(`docs/backlog/sprint-22-handoff.md`) for exactly which artifacts are ready to apply.
+delivered to Codex). Phase 3 is **fully done, live-verified** — Sprint 22's artifacts
+cleared Codex round 2 (`341554b`), then the live-apply session (`docs/backlog/sprint-22-live-apply-runbook.md`)
+put all three services on `dnit-vps`: `https://saga-{auth,orders,inventory}.dnit.be` are
+all publicly reachable, correctly identified via their own logs (not just "active"), H2
+console confirmed blocked. Two real bugs found only by actually running the live-apply
+(neither catchable by artifact review alone): a sudoers exact-match mismatch, and a
+shared-temp-path race condition across the three deploy workflows that briefly caused
+`pubrec-auth` to run inventory-service's jar — both fixed, both documented in the
+runbook.
+
+**New gap surfaced, not yet scoped as a task:** there is no Kafka broker deployed on
+`dnit-vps` at all. `order-service`/`inventory-service` are healthy (Spring Kafka retries
+non-blocking in the background), but the actual saga — the whole point of the demo —
+won't work end-to-end until a broker exists there. This was missed when Sprint 22 was
+scoped; the roadmap's original "Kafka: always-on" resource-budget decision never got
+turned into deploy artifacts. Needs its own task before Phase 4 (Vercel frontends) is
+worth doing, since the frontends have nothing to demo without a working saga.
 
 ## Ground truth this roadmap is built on
 
@@ -79,7 +89,11 @@ about them changes for this project to land.
   that shouldn't be made under the time pressure of "OAuth is half-wired and blocking a
   demo."
 
-### Phase 3 — backend hosting on `dnit-vps` (reuses the Pet Giftshop pattern)
+### Phase 3 — backend hosting on `dnit-vps` (reuses the Pet Giftshop pattern) — **DONE 2026-07-15**
+Sprint 22 (artifacts, Codex-reviewed) + live-apply session (`docs/backlog/sprint-22-live-apply-runbook.md`).
+All three Spring services live, publicly reachable, correctly verified by identity not
+just uptime. Two real live-ops bugs found and fixed (sudoers exact-match, shared-tmp-path
+race). **What this phase did NOT cover, discovered only once live: Kafka.** See Phase 3.5.
 - Use the port scheme above (8090/8091/9000/9092/2181) — live-verify the three unclaimed
   ports are actually free before wiring the deploy workflow.
 - Three systemd units (`pubrec-auth`, `pubrec-order`, `pubrec-inventory`), each a jar
@@ -105,6 +119,19 @@ about them changes for this project to land.
   Encrypt certs) is a separate, explicitly-confirmed step done with Dimitri's sign-off in
   the loop — not something a worktree agent does autonomously against a box that already
   serves a paying customer.
+
+### Phase 3.5 — deploy a Kafka broker on `dnit-vps` (new, unscoped, found 2026-07-15)
+- `order-service`/`inventory-service` are live and healthy but their Kafka listeners are
+  stuck retrying `localhost:9092` forever — there is no broker on the box. The saga (the
+  actual demo) cannot work until this exists.
+- Likely shape: adapt `order-service/docker-compose.yml`'s Confluent Kafka+ZooKeeper
+  services to run on the VPS (ports 2181/9092, confirmed free during Track C's port
+  scan) — either as a `docker-compose`-managed pair (matches how this project already
+  runs Kafka locally) or, if going for the "shave a JVM off the footprint" KRaft
+  single-process mode noted under old Phase 3, that decision should get made here, not
+  deferred again.
+- This blocks Phase 4 in practice, if not formally: there's nothing worth demoing on the
+  Vercel-hosted frontends without a working saga behind them.
 
 ### Phase 4 — frontend hosting on Vercel (reuses the existing pattern exactly)
 - `vercel.json` rewrites + env-based API base URL pointing at Phase 3's subdomains.
