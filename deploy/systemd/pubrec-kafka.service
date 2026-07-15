@@ -1,0 +1,15 @@
+[Unit]
+Description=Pub-Rec Demo — Kafka + ZooKeeper (Docker Compose)
+Requires=docker.service
+After=docker.service network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/pubrec/kafka
+ExecStart=/usr/bin/docker compose -f /opt/pubrec/kafka/docker-compose.yml up -d
+ExecStop=/usr/bin/docker compose -f /opt/pubrec/kafka/docker-compose.yml down
+TimeoutStartSec=180
+
+[Install]
+WantedBy=multi-user.target

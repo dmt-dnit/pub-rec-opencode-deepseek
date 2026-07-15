@@ -238,6 +238,69 @@ gh secret set VPS_USER --env Production --body "administrator" --repo dmt-dnit/p
 base64 -w0 ~/pubrec_deploy_key | gh secret set VPS_SSH_KEY_B64 --env Production --repo dmt-dnit/pub-rec-opencode-deepseek
 ```
 
+## Phase 3.5 — Kafka broker (needs root)
+
+`order-service`/`inventory-service` are deployed and healthy, but they retry
+`localhost:9092` forever with no broker to answer (see the Kafka gap note under Phase 4
+above). This phase deploys the Kafka+ZooKeeper stack from
+`deploy/docker-compose/kafka-vps.yml` — the same image versions and broker config as
+local dev's `order-service/docker-compose.yml`, adapted for a persistent VPS deployment
+with **ports bound to `127.0.0.1` only** (not `0.0.0.0`). Kafka's `PLAINTEXT` listener
+has **no authentication** — binding to `0.0.0.0` (Docker's default when no host IP is
+specified) would expose the broker to the public internet. The `127.0.0.1` bind ensures
+only services running on the same VPS can reach Kafka.
+
+```bash
+# 1. Create the kafka directory
+sudo mkdir -p /opt/pubrec/kafka
+
+# 2. Copy the compose file (this IS the reviewed artifact — don't hand-edit)
+sudo cp deploy/docker-compose/kafka-vps.yml /opt/pubrec/kafka/docker-compose.yml
+
+# 3. Install and enable the systemd unit
+sudo cp deploy/systemd/pubrec-kafka.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable pubrec-kafka
+
+# 4. Pull images and start the stack
+sudo docker compose -f /opt/pubrec/kafka/docker-compose.yml pull
+sudo systemctl start pubrec-kafka
+
+# 5. Verify ports are bound correctly (127.0.0.1 only, not 0.0.0.0)
+ss -tlnp | grep -E ':(2181|9092)'
+# Expected output shows 127.0.0.1:2181 and 127.0.0.1:9092, NOT 0.0.0.0:* or *:2181/*:9092
+
+# 6. Verify containers are running
+sudo docker compose -f /opt/pubrec/kafka/docker-compose.yml ps
+```
+
+**Port-binding check is critical:** if `ss -tlnp` shows `0.0.0.0:9092` or `*:9092`
+instead of `127.0.0.1:9092`, the broker is exposed to the public internet — stop
+immediately (`sudo systemctl stop pubrec-kafka`) and fix the compose file. The
+`127.0.0.1` prefix in the compose file's ports section is the only thing that prevents
+this; Docker binds to `0.0.0.0` when no host IP is specified.
+
+Once Kafka is confirmed running and correctly bound: restart both services that depend on
+it so they pick up the broker immediately rather than waiting for their next retry cycle:
+
+```bash
+sudo systemctl restart pubrec-order pubrec-inventory
+# Verify the saga log line has settled — no more "Rebootstrapping" against localhost:9092
+sudo journalctl -u pubrec-order -n 5 --no-pager
+sudo journalctl -u pubrec-inventory -n 5 --no-pager
+```
+
+**No persistent volumes** — this matches the project's "no persistent state anywhere"
+pattern (all three Spring services are in-memory H2). Kafka's in-broker state is lost on
+container restart, which is acceptable for a demo.
+
+**No sudoers update needed** — this phase uses `sudo` directly on the VPS, same as
+Phases 1–2. The `pubrec-kafka` systemd unit is not managed by the CI deploy workflow
+(no `scp`-then-`mv` cycle for a compose file), so it doesn't need an entry in
+`/etc/sudoers.d/pubrec-deploy`. If Phase 4's deploy workflow is later extended to
+restart `pubrec-kafka` after binding it to the CI credential's exact-command allowlist,
+a sudoers update would be needed at that point.
+
 ## Phase 4 — First deploy (either of us — this step itself isn't sensitive)
 
 **Dispatch these one at a time, waiting for each to finish before starting the next —
