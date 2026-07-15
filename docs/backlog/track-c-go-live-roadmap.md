@@ -1,7 +1,16 @@
 # Track C — go-live roadmap
 
-**Written:** 2026-07-15. **Status:** proposed sequencing, not yet a sprint. Track B
-(hardening) is functionally done; this is the answer to "what Track C is."
+**Written:** 2026-07-15. Track B (hardening) is functionally done; this is the answer to
+"what Track C is."
+
+**Status update (2026-07-15):** Phase 1 done (AUTO-1 landed + header-contract reminder
+delivered to Codex). Phase 3's **artifact-authoring** half is done — Sprint 22, cleared
+2026-07-15 after a genuine round-1 REJECT (SSH host-key pinning + Nginx `/ws` scoping,
+both fixed in round 2, `341554b`). **Next up: the live-apply session** (create the
+`pubrec` user/directories on `dnit-vps`, install the systemd units and Nginx vhosts,
+request Let's Encrypt certs, create the GitHub secrets/`Production` Environment) —
+scheduled separately with Dimitri in the loop, not yet started. See Sprint 22's handoff
+(`docs/backlog/sprint-22-handoff.md`) for exactly which artifacts are ready to apply.
 
 ## Ground truth this roadmap is built on
 
