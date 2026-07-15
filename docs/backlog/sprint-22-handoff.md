@@ -4,7 +4,45 @@
 **Tasks:** V-1 (systemd units), V-2 (Nginx vhosts), V-3 (GitHub Actions deploy workflows + shared deploy script). All deploy-*artifact*-authoring only — no live infrastructure touched.
 **Implementer:** **opencode + DeepSeek** for all three, standing default, one isolated worktree per task. Diffs coordinator-reviewed by reading; integrated onto `main`.
 **Merge-gate tier:** coordinator-supervised, pushed direct to `main` per the policy settled in Sprint 21.
-Review-Target-Commit: b5fb2d3
+Review-Target-Commit: 341554b
+
+## Round 2 (2026-07-15) — addresses Codex round-1 REJECT `reviews/sprint-22-track-c-review.md`
+
+Codex round-1 verdict was REJECT, mechanically verified as a genuine fresh blocker
+(`bash scripts/verify-review.sh 22` → exit 3), and both findings were independently
+confirmed by the coordinator reading the actual files before any fix was briefed:
+
+1. **SSH host key not pinned (MITM risk):** all three deploy workflows ran
+   `ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts` at runtime — blind trust-on-first-use
+   with no verification. Inherited verbatim from the fetched Pet Giftshop reference
+   template, not introduced by the implementer. **Fix (`341554b`):** the real `dnit-vps`
+   host key (RSA/ECDSA/Ed25519) was captured from an already-trusted SSH session this
+   session and committed to `deploy/ssh/dnit-vps.known_hosts` — host keys are public by
+   design, so committing the pinned value is correct practice, unlike the SSH *private*
+   key which stays a GitHub secret. All three workflows now `cat` that file into
+   `known_hosts` instead of scanning at runtime; `ssh-keyscan` no longer appears anywhere
+   in the three workflow files (confirmed via `grep -rn`).
+2. **Nginx WebSocket headers on the catch-all `location /`, not scoped to `/ws`:** in
+   `saga-orders.conf`/`saga-inventory.conf`, the single `location /` block forced
+   `Connection: upgrade` semantics onto every proxied request, not just the actual
+   WebSocket handshake. **This was a coordinator brief error in round 1** — the V-2 brief
+   told the implementer to put the headers in `location /`, mirroring the Pet Giftshop
+   template's single-block shape without accounting for this project's WebSocket traffic
+   living at one specific path. The implementer followed that instruction correctly; the
+   instruction was wrong. **Fix (`341554b`):** both vhosts now have a dedicated
+   `location /ws` carrying the upgrade headers, and `location /` reverted to plain HTTP
+   proxying (same shape as the already-correct `saga-auth.conf`, which is untouched —
+   confirmed via `git diff` showing zero changes to that file).
+
+**Coordinator verification:** read the full diff (6 files, 28 insertions/5 deletions —
+scope matches exactly the two findings, no drift into V-1's systemd units or anything
+else). Confirmed: no `ssh-keyscan` remains; `location /ws` appears exactly once per
+changed vhost file; `Connection "upgrade"` appears exactly once per file (inside
+`location /ws`, not `location /`); `saga-auth.conf` diff is empty. YAML re-validated for
+all three workflows post-edit. `nginx -t`/`actionlint` still not available in this
+environment — same stated limitation as round 1, not silently dropped.
+
+## Round 1 (2026-07-15, superseded by round 2 above where noted)
 
 ## Why this sprint exists
 `docs/backlog/track-c-go-live-roadmap.md` Phase 3 — the artifact-authoring half of hosting the three Spring services on Dimitri's existing `dnit-vps`. Every naming/port/subdomain choice was decided and (for ports) live-verified against the real box before this sprint was briefed — see the roadmap doc's "Port conflict — resolved and live-verified 2026-07-15" section.
