@@ -7,6 +7,7 @@ import com.example.sharedmodel.InventoryReservationEvent;
 import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -26,20 +27,23 @@ public class OutboxRelay {
     private final InventoryEventPublisher publisher;
     private final SimpMessagingTemplate messagingTemplate;
     private final ObjectMapper objectMapper;
+    private final ObjectProvider<OutboxRelay> self;
 
     public OutboxRelay(OutboxEventRepository outboxEventRepository,
                        InventoryEventPublisher publisher,
                        SimpMessagingTemplate messagingTemplate,
-                       ObjectMapper objectMapper) {
+                       ObjectMapper objectMapper,
+                       ObjectProvider<OutboxRelay> self) {
         this.outboxEventRepository = outboxEventRepository;
         this.publisher = publisher;
         this.messagingTemplate = messagingTemplate;
         this.objectMapper = objectMapper;
+        this.self = self;
     }
 
     @Scheduled(fixedDelayString = "${outbox.relay.interval-ms:500}")
     public void scheduledRelay() {
-        processPending();
+        self.getObject().processPending();
     }
 
     @Transactional
