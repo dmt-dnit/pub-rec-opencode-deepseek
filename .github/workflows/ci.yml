@@ -8,7 +8,7 @@
 #   ~/.m2 (`./mvnw -DskipTests install`) before building its own module. This mirrors the
 #   documented local build flow and avoids any cross-job file transfer. An earlier attempt used
 #   upload/download-artifact, but upload-artifact@v4 reported "No files were found" for the
-#   workspace-relative .m2 path, so downstream jobs could not resolve com.example:shared-model.
+#   workspace-relative .m2 path, so downstream jobs could not resolve be.dnit:shared-model.
 #   Inline build removes that failure class entirely; shared-model is tiny so the rebuild is cheap.
 #   setup-java `cache: maven` (keyed on ~/.m2) now applies to all Maven jobs.
 #
@@ -165,7 +165,7 @@ jobs:
   # One `snyk test --all-projects` covers all 4 Maven poms + both npm UIs. Fast and
   # account-backed — replaced OWASP Dependency-Check, whose ~360k-record NVD database
   # download made it impractical in CI. shared-model is installed inline so the service
-  # poms resolve com.example:shared-model. Results upload as SARIF to the Security tab.
+  # poms resolve be.dnit:shared-model. Results upload as SARIF to the Security tab.
   #
   # Requires repo secret SNYK_TOKEN_CLAUDE_CODE_CLI (free Snyk account → repo Settings → Secrets → Actions).
   snyk-security:
@@ -192,7 +192,7 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install shared-model (so service poms resolve com.example:shared-model)
+      - name: Install shared-model (so service poms resolve be.dnit:shared-model)
         run: cd shared-model && ./mvnw --batch-mode -q -DskipTests install
 
       - name: Set up Snyk CLI

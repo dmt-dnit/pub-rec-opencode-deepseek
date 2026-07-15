@@ -34,7 +34,7 @@ auth:
 
 logging:
   level:
-    com.example.authserver: INFO
+    be.dnit.authserver: INFO
     org.springframework.security: DEBUG
   structured:
     format:

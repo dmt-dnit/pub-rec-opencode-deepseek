@@ -11,7 +11,7 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.example</groupId>
+    <groupId>be.dnit</groupId>
     <artifactId>inventory-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>inventory-service</name>
@@ -65,7 +65,7 @@
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>com.example</groupId>
+            <groupId>be.dnit</groupId>
             <artifactId>shared-model</artifactId>
             <version>0.0.1-SNAPSHOT</version>
         </dependency>

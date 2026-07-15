@@ -33,8 +33,8 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
       properties:
-        spring.json.trusted.packages: "com.example.sharedmodel"
-        spring.json.value.default.type: com.example.sharedmodel.InventoryReservationEvent
+        spring.json.trusted.packages: "be.dnit.sharedmodel"
+        spring.json.value.default.type: be.dnit.sharedmodel.InventoryReservationEvent
 
 server:
   port: 8080
@@ -46,7 +46,7 @@ app:
 
 logging:
   level:
-    com.example.orderservice: INFO
+    be.dnit.orderservice: INFO
     org.springframework.security: INFO
   structured:
     format:

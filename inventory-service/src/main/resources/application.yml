@@ -20,8 +20,8 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
       properties:
-        spring.json.trusted.packages: "com.example.sharedmodel"
-        spring.json.value.default.type: com.example.sharedmodel.OrderPlacedEvent
+        spring.json.trusted.packages: "be.dnit.sharedmodel"
+        spring.json.value.default.type: be.dnit.sharedmodel.OrderPlacedEvent
 
   datasource:
     url: jdbc:h2:mem:inventorydb
@@ -45,7 +45,7 @@ app:
 
 logging:
   level:
-    com.example.inventoryservice: INFO
+    be.dnit.inventoryservice: INFO
     org.springframework.security: INFO
   structured:
     format:
