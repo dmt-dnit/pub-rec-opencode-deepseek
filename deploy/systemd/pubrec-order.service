@@ -1,0 +1,19 @@
+[Unit]
+Description=Pub-Rec Demo — order-service
+After=network.target
+
+[Service]
+Type=simple
+User=pubrec
+Group=pubrec
+WorkingDirectory=/opt/pubrec/order
+EnvironmentFile=/etc/pubrec/order.env
+ExecStart=/usr/bin/java -jar /opt/pubrec/order/backend.jar
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

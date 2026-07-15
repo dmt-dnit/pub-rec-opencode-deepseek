@@ -1,0 +1,19 @@
+[Unit]
+Description=Pub-Rec Demo — inventory-service
+After=network.target
+
+[Service]
+Type=simple
+User=pubrec
+Group=pubrec
+WorkingDirectory=/opt/pubrec/inventory
+EnvironmentFile=/etc/pubrec/inventory.env
+ExecStart=/usr/bin/java -jar /opt/pubrec/inventory/backend.jar
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
