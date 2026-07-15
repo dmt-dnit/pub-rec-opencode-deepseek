@@ -1,17 +1,51 @@
 # Sprint 22 live-apply runbook — hosting the 3 backend services on `dnit-vps`
 
-**Status (2026-07-15):** Phases 0–2 done and verified. Phase 3 (credentials) and Phase 4
-(first deploy) remain.
+**Status (2026-07-15): Phases 0–4 done. All three services live and publicly
+verified.** `https://saga-{auth,orders,inventory}.dnit.be` all return `200` on their
+health/JWKS endpoints; H2 console confirmed blocked on all three (`401`/`404`, never
+`200`). One real gap found during Phase 4, not yet resolved — see below.
+
+**Phase 4 required two extra fix rounds, both found live, neither caught by Codex's
+artifact review (which explicitly didn't run a live deploy):**
+- **Round 3:** all three deploy workflows shared identical remote temp paths
+  (`/tmp/backend.jar`, `/tmp/deploy-backend.sh`) — copied verbatim from the
+  single-app Pet Giftshop template. Dispatching all three concurrently caused a real
+  collision: 2 of 3 deploys failed outright, and the "successful" one (`pubrec-auth`)
+  actually started **inventory-service's jar** under the auth-server's systemd unit —
+  caught via the running process's own structured log self-identifying as
+  `"service":{"name":"inventory-service"}`, stopped immediately. Fixed by giving each
+  workflow unique per-service temp paths (`fix(sprint-22-round3)`, `c1dc0b3`) and
+  updating the live sudoers file to match. Redeployed sequentially afterward — clean.
+- **Kafka gap (unresolved):** `order-service`/`inventory-service` both log continuous
+  `Rebootstrapping` retries against `localhost:9092` — **there is no Kafka broker
+  deployed on `dnit-vps` at all.** This doesn't block the services from starting (Spring
+  Kafka's listener containers retry non-blocking in the background, so both services are
+  healthy and serving HTTP), but it means **the actual saga — placing an order and
+  watching it flow through Kafka to inventory and back — will not work** until a broker
+  exists here. This was a planning gap in the original Track C Phase 3 scope: the
+  roadmap decided "Kafka: always-on" as a resource-budget answer, but no one (including
+  the coordinator) ever turned that into actual deploy artifacts or a runbook phase —
+  Sprint 22 only ever covered the three Spring services. Needs its own follow-up task
+  (likely a `docker-compose`-based Kafka+ZooKeeper deploy on the VPS, mirroring
+  `order-service/docker-compose.yml`'s broker config, on ports 2181/9092 which were
+  confirmed free during Track C's port-scheme verification).
 
 - **Phase 0 (DNS):** done — `saga-{auth,orders,inventory}.dnit.be` all resolve to
   `93.127.142.134`.
 - **Phase 1 (user/dirs/systemd):** done — `pubrec` system user, `/opt/pubrec/*`,
   `/etc/pubrec/*.env` (correct content, `root:pubrec` 640), all three units installed
-  and `enabled` (correctly `inactive` — no jar deployed yet, expected).
+  and enabled.
 - **Phase 2 (Nginx + TLS):** done — all three vhosts live with valid Let's Encrypt certs
   (expire 2026-10-13, auto-renewal configured by certbot), HTTP→HTTPS redirect working,
-  HTTPS returning `502` (correct — no backend running yet), `/ws` path-scoping confirmed
-  present in the live config for `saga-orders`/`saga-inventory`.
+  `/ws` path-scoping confirmed present in the live config for `saga-orders`/`saga-inventory`.
+- **Phase 3 (credentials):** done — dedicated `pubrec-deploy` ed25519 keypair, public
+  half in `administrator`'s `authorized_keys`, `Production` GitHub environment with
+  `VPS_HOST`/`VPS_USER`/`VPS_SSH_KEY_B64` (confirmed environment-scoped, not repo-level),
+  narrowly-scoped sudoers rule (exact-command allowlist, no wildcards).
+- **Phase 4 (first deploy):** done, after round 3's fix — all three services deployed,
+  running, and independently confirmed via their own structured logs to be running the
+  *correct* jar (not just "active"). Public endpoints all `200`; H2 console blocked on
+  all three.
 - **Verified throughout:** `nginx` master PID unchanged across all 3 reloads (proves
   graceful reload, not restart), and `petgiftshop-backend`
   (pid 62505)/`petgiftshop-backend-staging` (pid 79184)/`file-upload-api` (pid 826) all
@@ -206,14 +240,27 @@ base64 -w0 ~/pubrec_deploy_key | gh secret set VPS_SSH_KEY_B64 --env Production 
 
 ## Phase 4 — First deploy (either of us — this step itself isn't sensitive)
 
-Once Phase 3's secrets exist, dispatch each workflow:
+**Dispatch these one at a time, waiting for each to finish before starting the next —
+do not dispatch all three together.** The first live attempt did dispatch them
+concurrently and hit a real race condition on the shared VPS (see round 3's fix above,
+`c1dc0b3`) — the per-service temp-path fix makes concurrent dispatch *safe* now, but
+sequential is still the simpler, easier-to-reason-about default for a first deploy of
+any new service.
+
 ```bash
 gh workflow run deploy-auth.yml --repo dmt-dnit/pub-rec-opencode-deepseek --ref main
+# wait for completion, verify, then:
 gh workflow run deploy-order.yml --repo dmt-dnit/pub-rec-opencode-deepseek --ref main
+# wait for completion, verify, then:
 gh workflow run deploy-inventory.yml --repo dmt-dnit/pub-rec-opencode-deepseek --ref main
 ```
 Watch each run (`gh run watch`) — this is the actual first real deploy: builds the jar,
 uploads it, stops/starts the systemd unit for the first time with a real jar in place.
+**After each one, verify identity, not just "active"** — check the service's own
+structured log for a self-identifying `"service":{"name":"..."}` field matching what you
+expect, not just `systemctl status`'s `Active: active (running)` line. The round-3 bug
+produced an `active (running)` auth-server unit that was actually running
+inventory-service's code — "active" alone doesn't prove correctness.
 
 ## Phase 5 — Verification
 
