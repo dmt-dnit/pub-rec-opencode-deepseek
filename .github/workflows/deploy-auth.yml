@@ -1,0 +1,90 @@
+name: Deploy auth-server (Production)
+
+on:
+  workflow_dispatch:
+    inputs:
+      git_ref:
+        description: "Branch or tag to deploy"
+        required: true
+        default: "main"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: Production
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+      VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+      VPS_SSH_KEY_B64: ${{ secrets.VPS_SSH_KEY_B64 }}
+      BACKEND_SERVICE: pubrec-auth
+      REMOTE_TMP_JAR: /tmp/backend.jar
+      REMOTE_DEPLOY_SCRIPT: /tmp/deploy-backend.sh
+      REMOTE_JAR_DEST: /opt/pubrec/auth/backend.jar
+      APP_USER: pubrec
+    steps:
+      - name: Validate required secrets
+        run: |
+          for name in VPS_HOST VPS_USER; do
+            if [ -z "${!name:-}" ]; then
+              echo "Missing required secret: $name (environment: Production)." >&2
+              exit 1
+            fi
+          done
+          if [ -z "${VPS_SSH_KEY:-}" ] && [ -z "${VPS_SSH_KEY_B64:-}" ]; then
+            echo "Missing required secret: set VPS_SSH_KEY or VPS_SSH_KEY_B64 (environment: Production)." >&2
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.git_ref }}
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Build shared-model
+        run: cd shared-model && ./mvnw --batch-mode -DskipTests clean install
+
+      - name: Build auth-server jar
+        working-directory: auth-server
+        run: ./mvnw --batch-mode -DskipTests clean package
+
+      - name: Prepare SSH
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          if [ -n "${VPS_SSH_KEY_B64:-}" ]; then
+            printf '%s' "$VPS_SSH_KEY_B64" | tr -d '\r\n\t ' | base64 -d > ~/.ssh/id_ed25519
+          else
+            printf '%s' "$VPS_SSH_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
+            if grep -q '\\n' ~/.ssh/id_ed25519; then
+              perl -0pi -e 's/\\n/\n/g' ~/.ssh/id_ed25519
+            fi
+          fi
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keygen -y -f ~/.ssh/id_ed25519 >/dev/null
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+
+      - name: Upload deploy script
+        run: |
+          scp deploy/scripts/deploy-backend.sh \
+            "$VPS_USER@$VPS_HOST:$REMOTE_DEPLOY_SCRIPT"
+
+      - name: Upload auth-server jar
+        run: |
+          scp auth-server/target/auth-server-0.0.1-SNAPSHOT.jar \
+            "$VPS_USER@$VPS_HOST:$REMOTE_TMP_JAR"
+
+      - name: Restart production auth-server service
+        run: |
+          ssh "$VPS_USER@$VPS_HOST" \
+            "chmod +x '$REMOTE_DEPLOY_SCRIPT' && \
+             SERVICE='$BACKEND_SERVICE' \
+             JAR_SRC='$REMOTE_TMP_JAR' \
+             JAR_DEST='$REMOTE_JAR_DEST' \
+             APP_USER='$APP_USER' \
+             bash '$REMOTE_DEPLOY_SCRIPT'"
