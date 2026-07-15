@@ -67,7 +67,7 @@ jobs:
           fi
           chmod 600 ~/.ssh/id_ed25519
           ssh-keygen -y -f ~/.ssh/id_ed25519 >/dev/null
-          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+          cat deploy/ssh/dnit-vps.known_hosts >> ~/.ssh/known_hosts
 
       - name: Upload deploy script
         run: |
