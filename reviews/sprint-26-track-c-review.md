@@ -1,0 +1,19 @@
+# Sprint 26 Track C Review - Vercel Frontend Deploy Prep
+
+Review-Target-Commit: `9902156`  
+Handoff: `docs/backlog/sprint-26-handoff.md`  
+Verdict: REJECT
+
+## Findings
+
+- **[P1] Google login is still wired as a frontend-relative path, so it will break once the UIs are hosted on Vercel.** Both login pages still do `window.location.href = '/oauth2/authorization/google'` at [order-ui/src/app/pages/login/login.component.ts](C:/projects/pub-rec-opencode-deepseek/order-ui/src/app/pages/login/login.component.ts:73) and [inventory-ui/src/app/pages/login/login.component.ts](C:/projects/pub-rec-opencode-deepseek/inventory-ui/src/app/pages/login/login.component.ts:73). Sprint 26 moved REST auth calls to `environment.authApiBase` at [order-ui/src/app/services/auth.service.ts](C:/projects/pub-rec-opencode-deepseek/order-ui/src/app/services/auth.service.ts:10) and [inventory-ui/src/app/services/auth.service.ts](C:/projects/pub-rec-opencode-deepseek/inventory-ui/src/app/services/auth.service.ts:10), but the Google path was left behind. In the deployed setup, `/oauth2/authorization/google` will resolve against the Vercel frontend origin, not `https://saga-auth.dnit.be`, and both `vercel.json` files rewrite all unmatched paths back to `index.html` at [order-ui/vercel.json](C:/projects/pub-rec-opencode-deepseek/order-ui/vercel.json:2) and [inventory-ui/vercel.json](C:/projects/pub-rec-opencode-deepseek/inventory-ui/vercel.json:2). That means clicking "Login with Google" will not even reach the backend OAuth entrypoint. This is a real production regression introduced by splitting the frontend and backend origins.
+
+## Notes
+
+- The core V-1 env wiring is otherwise consistent: production auth/API/WebSocket bases are present in [order-ui/src/environments/environment.prod.ts](C:/projects/pub-rec-opencode-deepseek/order-ui/src/environments/environment.prod.ts:3), [order-ui/src/environments/environment.prod.ts](C:/projects/pub-rec-opencode-deepseek/order-ui/src/environments/environment.prod.ts:5), [inventory-ui/src/environments/environment.prod.ts](C:/projects/pub-rec-opencode-deepseek/inventory-ui/src/environments/environment.prod.ts:3), and [inventory-ui/src/environments/environment.prod.ts](C:/projects/pub-rec-opencode-deepseek/inventory-ui/src/environments/environment.prod.ts:5), and the Angular `production` file replacements are correctly configured in both `angular.json` files.
+- The CORS allow-lists on the three services match the intended Vercel origins by source inspection at [auth-server/src/main/java/be/dnit/authserver/config/SecurityConfig.java](C:/projects/pub-rec-opencode-deepseek/auth-server/src/main/java/be/dnit/authserver/config/SecurityConfig.java:93), [order-service/src/main/java/be/dnit/orderservice/config/SecurityConfig.java](C:/projects/pub-rec-opencode-deepseek/order-service/src/main/java/be/dnit/orderservice/config/SecurityConfig.java:44), and [inventory-service/src/main/java/be/dnit/inventoryservice/config/SecurityConfig.java](C:/projects/pub-rec-opencode-deepseek/inventory-service/src/main/java/be/dnit/inventoryservice/config/SecurityConfig.java:44).
+- The two new deploy-hook workflows are correctly `workflow_dispatch`-only and narrowly scoped by source inspection at [.github/workflows/deploy-order-ui.yml](C:/projects/pub-rec-opencode-deepseek/.github/workflows/deploy-order-ui.yml:3) and [.github/workflows/deploy-inventory-ui.yml](C:/projects/pub-rec-opencode-deepseek/.github/workflows/deploy-inventory-ui.yml:3).
+
+## Verification Limits
+
+- I could not reproduce the Angular build success from this Windows review session because the local `node_modules` state is platform-inconsistent here: `order-ui` failed with an `esbuild` Linux-vs-Windows binary mismatch, and `inventory-ui` has no usable local `ng.cmd` in this environment. That is an environment issue, not by itself a source finding, but it means my frontend verification is based on source inspection rather than a fresh local `ng build`.
