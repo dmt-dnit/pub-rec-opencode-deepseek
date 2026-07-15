@@ -21,23 +21,31 @@
   Vercel tier costs nothing incremental except the VPS's spare capacity, and reuses a
   deploy pattern that's already proven rather than inventing a new one.
 
-## A real conflict this surfaces — needs your decision before Phase 3
+## Port conflict — resolved 2026-07-15
 
 `order-service` defaults to port **8080**, `inventory-service` to **8081**. On
 `dnit-vps`, `8080` is Pet Giftshop **production** and `8081` is the **file-upload API**
-— both already serving real traffic. This project cannot bind those ports on that box.
-Two independent things to decide, not just one remap:
+— both already serving real traffic, so this project can't bind those ports on that box.
+Decided: local dev keeps today's 8080/8081/9000 unchanged; the VPS deployment uses a
+non-colliding set instead of moving or touching any existing service:
 
-1. **Ports.** Pick non-colliding internal ports for the VPS deployment only (local dev
-   keeps today's 8080/8081/9000 unchanged) — e.g. `8090`/`8091`, `9000` looks free per
-   the infra map but that should be confirmed with a live check on the box, not assumed
-   from a doc that could be stale.
-2. **Resource budget.** This box already runs a paying customer's production API.
-   Adding a 3-JVM Spring stack + a 2-container Kafka/ZooKeeper broker is a real
-   footprint, not a free lunch, even if the ports don't collide. I'm not going to assume
-   "there's obviously enough headroom" — that's worth an explicit check (current
-   `free -h`/`docker stats` on the box) and an explicit call from you on whether it runs
-   continuously or only during active demos (see Phase 3).
+| Service | Local dev | `dnit-vps` |
+|---|---|---|
+| `order-service` | 8080 | **8090** |
+| `inventory-service` | 8081 | **8091** |
+| `auth-server` | 9000 | **9000** (unclaimed per the infra map, no need to move it) |
+| Kafka | 9092 | **9092** (unclaimed, keep default) |
+| ZooKeeper | 2181 | **2181** (unclaimed, keep default) |
+
+Only the two that actually collided move. **Still needed before this is wired into a
+deploy workflow:** a live check on the box (`ss -tlnp` or equivalent) that 9000/9092/2181
+are genuinely free — the infra map is from 2026-05-16 and has at least one documented
+drift already (Pet Giftshop staging: doc says 8081, live box says 8082), so treat it as
+"probably free," not confirmed, until checked live.
+
+**Resource budget:** Dimitri's read is the box has enough headroom — running continuously
+alongside the existing services, not on-demand. Existing services are untouched; nothing
+about them changes for this project to land.
 
 ## Phased sequence
 
@@ -59,19 +67,17 @@ Two independent things to decide, not just one remap:
   demo."
 
 ### Phase 3 — backend hosting on `dnit-vps` (reuses the Pet Giftshop pattern)
-- Resolve the port conflict + resource-budget question above.
+- Use the port scheme above (8090/8091/9000/9092/2181) — live-verify the three unclaimed
+  ports are actually free before wiring the deploy workflow.
 - Three systemd units (`pubrec-auth`, `pubrec-order`, `pubrec-inventory`), each a jar
   drop + restart, mirroring `petgiftshop-backend.service`. Reuse the
   `vps-nginx-systemd-spring` pattern already established for Pet Giftshop rather than
   inventing a new deploy shape.
-- **Kafka/ZooKeeper footprint decision:** this is a demo, not a 24/7 product — default
-  recommendation is systemd units that are **enabled but not started by default**, so
-  Kafka only runs when someone's about to demo/present, not burning RAM on the shared
-  box year-round. Flip to always-on only if you want a permanently-live public URL to
-  hand out. Optional, lower-priority follow-up: the current compose still runs separate
-  ZooKeeper + Kafka containers (Confluent 7.8.0) — collapsing to single-process **KRaft
-  mode** would shave one JVM off the footprint, worth doing once the on-demand-vs-always
-  call is made, not before.
+- **Kafka/ZooKeeper: always-on**, per the resource-budget call above — no on-demand
+  start/stop needed. Optional, lower-priority follow-up unrelated to that decision: the
+  current compose still runs separate ZooKeeper + Kafka containers (Confluent 7.8.0) —
+  collapsing to single-process **KRaft mode** would shave one JVM off the permanent
+  footprint, worth doing opportunistically, not blocking.
 - Nginx vhosts + subdomains (pick a naming convention — e.g. `saga-auth.dnit.be`,
   `saga-orders.dnit.be`, `saga-inventory.dnit.be`, or nest under a single
   `saga-demo.dnit.be` path-based proxy) + TLS via the same Let's Encrypt/Nginx pattern
@@ -111,8 +117,7 @@ Two independent things to decide, not just one remap:
 
 ## What I'd scope as the actual next sprint
 
-Given the sequencing above, the next concrete sprint is **Phase 1 + the Phase 3
-decisions** (ports, resource budget, on-demand-vs-always-on Kafka) — the latter needs
-your input, not a task brief, since it's about a shared box that already serves a real
-customer. Once those two decisions are made, Phase 3's systemd/Nginx work is a normal
-sprint brief in the usual mold.
+Port scheme and resource budget are now decided (above). The one remaining pre-Phase-3
+step is the live port-verification check on `dnit-vps`. After that, Phase 3's
+systemd/Nginx work is a normal sprint brief in the usual mold — ready to scope whenever
+Phase 1 (AUTO-1 + header reminder) is also clear.
