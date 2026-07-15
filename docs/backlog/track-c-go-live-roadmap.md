@@ -21,7 +21,7 @@
   Vercel tier costs nothing incremental except the VPS's spare capacity, and reuses a
   deploy pattern that's already proven rather than inventing a new one.
 
-## Port conflict — resolved 2026-07-15
+## Port conflict — resolved and live-verified 2026-07-15
 
 `order-service` defaults to port **8080**, `inventory-service` to **8081**. On
 `dnit-vps`, `8080` is Pet Giftshop **production** and `8081` is the **file-upload API**
@@ -33,15 +33,19 @@ non-colliding set instead of moving or touching any existing service:
 |---|---|---|
 | `order-service` | 8080 | **8090** |
 | `inventory-service` | 8081 | **8091** |
-| `auth-server` | 9000 | **9000** (unclaimed per the infra map, no need to move it) |
-| Kafka | 9092 | **9092** (unclaimed, keep default) |
-| ZooKeeper | 2181 | **2181** (unclaimed, keep default) |
+| `auth-server` | 9000 | **9000** |
+| Kafka | 9092 | **9092** |
+| ZooKeeper | 2181 | **2181** |
 
-Only the two that actually collided move. **Still needed before this is wired into a
-deploy workflow:** a live check on the box (`ss -tlnp` or equivalent) that 9000/9092/2181
-are genuinely free — the infra map is from 2026-05-16 and has at least one documented
-drift already (Pet Giftshop staging: doc says 8081, live box says 8082), so treat it as
-"probably free," not confirmed, until checked live.
+Only the two that actually collided move. **Live-verified via `ss -tlnp` on `dnit-vps`
+(2026-07-15):** confirmed listeners are only `80`/`443`/`22`/`5432`/`5433`/`8080`/`8081`/
+`8082` — nothing on `9000`, `9092`, `2181`, `8090`, or `8091`, and no systemd unit named
+anything Kafka/ZooKeeper/auth-related. This scheme is cleared to use as-is, no further
+verification needed before wiring the deploy workflow.
+
+(Side finding, unrelated to this project: an unidentified listener on port `4310` exists
+on the box that isn't documented in `DNIT_INFRASTRUCTURE.md` — flagged to Dimitri, no
+action needed here.)
 
 **Resource budget:** Dimitri's read is the box has enough headroom — running continuously
 alongside the existing services, not on-demand. Existing services are untouched; nothing
