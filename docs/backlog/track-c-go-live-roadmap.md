@@ -14,14 +14,28 @@ shared-temp-path race condition across the three deploy workflows that briefly c
 `pubrec-auth` to run inventory-service's jar — both fixed, both documented in the
 runbook.
 
-**Kafka gap — artifacts done, live-apply pending (2026-07-15):** Sprint 23 delivered
-`deploy/docker-compose/kafka-vps.yml` + `deploy/systemd/pubrec-kafka.service`, cleared
-Codex round 1 (`1728fcd`) — loopback-only port binding confirmed both by the coordinator
-(direct diff against `order-service/docker-compose.yml`) and independently by Codex
-(cross-checked against both services' actual `application.yml` client config). Not yet
-installed on the box. Once live-applied, still blocks Phase 4 (Vercel frontends) in
-practice until confirmed working end-to-end — no point deploying UIs with nothing
-working behind them.
+**Kafka gap — CLOSED 2026-07-15.** Sprint 23 delivered `deploy/docker-compose/kafka-vps.yml`
++ `deploy/systemd/pubrec-kafka.service`, cleared Codex round 1 (`1728fcd`) — loopback-only
+port binding confirmed both by the coordinator (direct diff against
+`order-service/docker-compose.yml`) and independently by Codex (cross-checked against
+both services' actual `application.yml` client config). Live-applied same day: images
+pulled, `docker compose config` confirmed `host_ip: 127.0.0.1` on both ports, externally
+confirmed unreachable from outside the VPS, `order`/`inventory` restarted and both
+connected (`"Discovered group coordinator localhost:9092"`, no more `Rebootstrapping`).
+
+**Bonus finding from the live-apply: a real application bug (Sprint 24).** Once Kafka
+was reachable, `inventory-service`'s `OutboxRelay` revealed a pre-existing Spring
+self-invocation `@Transactional` bug that had silently broken the saga's return leg
+since the class was written — `@Scheduled scheduledRelay()` called `processPending()`
+via `this.`, bypassing the proxy that makes `@Transactional` take effect. Fixed
+(`9cf3f7f`, Codex ACCEPT), redeployed, and **live-verified with a real order placed
+through the public API**: `POST https://saga-orders.dnit.be/api/orders` → inventory
+log shows `"Relayed outbox event id=1 orderId=<real-id> status=RESERVED"` → order status
+closed the loop `PENDING`→`CONFIRMED`. This is the first genuine end-to-end saga proof
+on live infrastructure, not just individually-healthy services.
+
+**Phase 4 (Vercel frontends) is now genuinely unblocked** — there's a working saga behind
+it to demo.
 
 ## Ground truth this roadmap is built on
 
@@ -121,14 +135,15 @@ race). **What this phase did NOT cover, discovered only once live: Kafka.** See 
   the loop — not something a worktree agent does autonomously against a box that already
   serves a paying customer.
 
-### Phase 3.5 — deploy a Kafka broker on `dnit-vps` — **artifacts DONE 2026-07-15, live-apply pending**
+### Phase 3.5 — deploy a Kafka broker on `dnit-vps` — **DONE 2026-07-15, live-verified**
 Sprint 23 (Codex-reviewed, `1728fcd`) delivered `deploy/docker-compose/kafka-vps.yml`
 (loopback-bound, `restart: unless-stopped`, byte-identical Kafka/ZooKeeper config to
-local dev otherwise) + `deploy/systemd/pubrec-kafka.service` + a runbook Phase 3.5
-section with an explicit port-binding verification step. Not yet installed on the box.
-- `order-service`/`inventory-service` are live and healthy but their Kafka listeners are
-  stuck retrying `localhost:9092` forever — there is no broker on the box yet. The saga
-  (the actual demo) cannot work until the artifacts above are live-applied.
+local dev otherwise) + `deploy/systemd/pubrec-kafka.service`. Live-applied same day:
+port binding verified three ways (`docker compose config` shows `host_ip: 127.0.0.1`,
+`ss -tlnp` confirms loopback-only, external TCP probe from outside the VPS confirms
+unreachable), `order`/`inventory` restarted and connected. Sprint 24's OutboxRelay fix
+(found during this live-apply) then let a real order close the full saga loop
+end-to-end on the public endpoints — see the roadmap status block above for the proof.
 - KRaft single-process mode (shaving one JVM off the footprint) remains an optional,
   lower-priority future optimization, not part of this phase — deferred deliberately,
   not by oversight.
