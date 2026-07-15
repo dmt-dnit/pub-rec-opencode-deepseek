@@ -18,8 +18,8 @@ jobs:
       VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
       VPS_SSH_KEY_B64: ${{ secrets.VPS_SSH_KEY_B64 }}
       BACKEND_SERVICE: pubrec-inventory
-      REMOTE_TMP_JAR: /tmp/backend.jar
-      REMOTE_DEPLOY_SCRIPT: /tmp/deploy-backend.sh
+      REMOTE_TMP_JAR: /tmp/backend-inventory.jar
+      REMOTE_DEPLOY_SCRIPT: /tmp/deploy-backend-inventory.sh
       REMOTE_JAR_DEST: /opt/pubrec/inventory/backend.jar
       APP_USER: pubrec
     steps:

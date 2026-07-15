@@ -183,7 +183,7 @@ sudo visudo -f /etc/sudoers.d/pubrec-deploy
 Contents:
 ```
 Cmnd_Alias PUBREC_SYSTEMCTL = /usr/bin/systemctl stop pubrec-auth, /usr/bin/systemctl start pubrec-auth, /usr/bin/systemctl status pubrec-auth --no-pager, /usr/bin/systemctl stop pubrec-order, /usr/bin/systemctl start pubrec-order, /usr/bin/systemctl status pubrec-order --no-pager, /usr/bin/systemctl stop pubrec-inventory, /usr/bin/systemctl start pubrec-inventory, /usr/bin/systemctl status pubrec-inventory --no-pager
-Cmnd_Alias PUBREC_DEPLOY = /usr/bin/mv /tmp/backend.jar /opt/pubrec/auth/backend.jar, /usr/bin/mv /tmp/backend.jar /opt/pubrec/order/backend.jar, /usr/bin/mv /tmp/backend.jar /opt/pubrec/inventory/backend.jar, /usr/bin/chown pubrec\:pubrec /opt/pubrec/auth/backend.jar, /usr/bin/chown pubrec\:pubrec /opt/pubrec/order/backend.jar, /usr/bin/chown pubrec\:pubrec /opt/pubrec/inventory/backend.jar
+Cmnd_Alias PUBREC_DEPLOY = /usr/bin/mv /tmp/backend-auth.jar /opt/pubrec/auth/backend.jar, /usr/bin/mv /tmp/backend-order.jar /opt/pubrec/order/backend.jar, /usr/bin/mv /tmp/backend-inventory.jar /opt/pubrec/inventory/backend.jar, /usr/bin/chown pubrec\:pubrec /opt/pubrec/auth/backend.jar, /usr/bin/chown pubrec\:pubrec /opt/pubrec/order/backend.jar, /usr/bin/chown pubrec\:pubrec /opt/pubrec/inventory/backend.jar
 administrator ALL=(root) NOPASSWD: PUBREC_SYSTEMCTL, PUBREC_DEPLOY
 ```
 `visudo` validates syntax before saving — won't let you lock yourself out with a typo.

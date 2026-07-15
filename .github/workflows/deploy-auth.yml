@@ -18,8 +18,8 @@ jobs:
       VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
       VPS_SSH_KEY_B64: ${{ secrets.VPS_SSH_KEY_B64 }}
       BACKEND_SERVICE: pubrec-auth
-      REMOTE_TMP_JAR: /tmp/backend.jar
-      REMOTE_DEPLOY_SCRIPT: /tmp/deploy-backend.sh
+      REMOTE_TMP_JAR: /tmp/backend-auth.jar
+      REMOTE_DEPLOY_SCRIPT: /tmp/deploy-backend-auth.sh
       REMOTE_JAR_DEST: /opt/pubrec/auth/backend.jar
       APP_USER: pubrec
     steps:
