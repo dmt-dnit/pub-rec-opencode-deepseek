@@ -1,7 +1,26 @@
 # Sprint 22 live-apply runbook — hosting the 3 backend services on `dnit-vps`
 
-**Status:** not yet executed. Written 2026-07-15 after Sprint 22's artifacts (systemd
-units, Nginx vhosts, deploy workflows) cleared Codex review round 2 (`341554b`).
+**Status (2026-07-15):** Phases 0–2 done and verified. Phase 3 (credentials) and Phase 4
+(first deploy) remain.
+
+- **Phase 0 (DNS):** done — `saga-{auth,orders,inventory}.dnit.be` all resolve to
+  `93.127.142.134`.
+- **Phase 1 (user/dirs/systemd):** done — `pubrec` system user, `/opt/pubrec/*`,
+  `/etc/pubrec/*.env` (correct content, `root:pubrec` 640), all three units installed
+  and `enabled` (correctly `inactive` — no jar deployed yet, expected).
+- **Phase 2 (Nginx + TLS):** done — all three vhosts live with valid Let's Encrypt certs
+  (expire 2026-10-13, auto-renewal configured by certbot), HTTP→HTTPS redirect working,
+  HTTPS returning `502` (correct — no backend running yet), `/ws` path-scoping confirmed
+  present in the live config for `saga-orders`/`saga-inventory`.
+- **Verified throughout:** `nginx` master PID unchanged across all 3 reloads (proves
+  graceful reload, not restart), and `petgiftshop-backend`
+  (pid 62505)/`petgiftshop-backend-staging` (pid 79184)/`file-upload-api` (pid 826) all
+  kept the exact same PIDs from before Phase 1 through after Phase 2 — none of them were
+  touched, restarted, or disturbed at any point.
+- **Temporary elevated access:** Dimitri granted `administrator` full NOPASSWD sudo for
+  this session (`/etc/sudoers.d/tmp-coordinator`) specifically to unblock Phases 1–2.
+  **This should be revoked now** (`sudo rm /etc/sudoers.d/tmp-coordinator`) — Phase 3
+  installs the permanent, narrowly-scoped replacement.
 
 ## Who does what, and why
 
