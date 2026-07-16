@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -17,12 +18,13 @@ import { Subscription } from 'rxjs';
 @Component({
     selector: 'app-dashboard',
     changeDetection: ChangeDetectionStrategy.Eager,
-    imports: [CommonModule, FormsModule, MatToolbarModule, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule, MatSnackBarModule],
+    imports: [CommonModule, FormsModule, RouterModule, MatToolbarModule, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatIconModule, MatSnackBarModule],
     template: `
     <mat-toolbar color="primary">
       <span>Order UI</span>
       <span style="flex:1"></span>
       <span *ngIf="user" style="margin-right:16px">{{ user.email }}</span>
+      <button *ngIf="user?.role === 'ADMIN'" mat-button routerLink="/admin">Admin</button>
       <button mat-button (click)="logout()">Logout</button>
     </mat-toolbar>
 
