@@ -5,5 +5,11 @@ import { AuthService } from '../services/auth.service';
 export const authGuard = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
-  return auth.isLoggedIn() ? true : router.parseUrl('/login');
+  if (!auth.isLoggedIn()) return router.parseUrl('/login');
+  const role = auth.currentUser?.role;
+  if (role && role !== 'WAREHOUSE_STAFF' && role !== 'ADMIN') {
+    auth.logout();
+    return router.parseUrl('/login');
+  }
+  return true;
 };
