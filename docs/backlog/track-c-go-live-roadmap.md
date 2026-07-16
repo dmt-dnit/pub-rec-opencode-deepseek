@@ -179,9 +179,25 @@ end-to-end on the public endpoints — see the roadmap status block above for th
 - Optional Testcontainers major-version bump (1.21.3→2.0.5) — pure tech debt, no
   go-live dependency, can happen whenever there's a quiet sprint.
 
-## What I'd scope as the actual next sprint
+### Phase 8 — real database instead of in-memory H2 (added 2026-07-16, deferred/optional)
+All three Spring services currently use in-memory H2 (`orderdb`, `inventorydb`,
+`authdb`) — a deliberate simplification from earlier in this roadmap (removes DB
+provisioning/backups/migration as a go-live concern entirely), not an oversight. Real
+consequence surfaced live: every backend restart wipes all data (users, orders,
+approvals), which is why re-approving a registered user was needed again after a
+redeploy. Dimitri's call (2026-07-16): make this **optional, scope it when we actually
+get here** — not blocking any current phase. When it is scoped, open questions to
+resolve then, not now: which service(s) actually need persistence for the demo to still
+make sense (all three vs. just the ones where wiped state is actually annoying),
+engine choice (Postgres is the obvious default given `dnit-vps` already runs Postgres
+for other projects per the roadmap's port table), and whether this is a shared instance
+or one per service given each currently owns its schema independently.
 
-Port scheme and resource budget are now decided (above). The one remaining pre-Phase-3
-step is the live port-verification check on `dnit-vps`. After that, Phase 3's
-systemd/Nginx work is a normal sprint brief in the usual mold — ready to scope whenever
-Phase 1 (AUTO-1 + header reminder) is also clear.
+## Current state (updated 2026-07-16)
+
+Phases 1–4 are done (Phase 4 live-verified end-to-end: real account registered, admin-
+approved, login, orders placed for SKU 1–3, reserved/rejected statuses both confirmed
+working in the UI on the actual public `*.vercel.app` + `saga-*.dnit.be` endpoints).
+Phase 5 (Snyk gate promotion) and Phase 6 (real Google OAuth) remain open, gated as
+described above. Phase 7 (AUTO-3 operational driver) still needs Dimitri's sign-off to
+start. Phase 8 (real DB) is new, deliberately deferred/optional per the note above.
