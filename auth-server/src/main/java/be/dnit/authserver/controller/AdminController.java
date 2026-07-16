@@ -30,6 +30,26 @@ public class AdminController {
         return ResponseEntity.ok(Map.of("message", "User approved", "email", user.getEmail()));
     }
 
+    public record RoleChangeRequest(String role) {}
+
+    @PutMapping("/users/{id}/role")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> changeUserRole(@PathVariable Long id, @RequestBody RoleChangeRequest request) {
+        UserEntity user = userRepository.findById(id).orElse(null);
+        if (user == null) {
+            return ResponseEntity.notFound().build();
+        }
+        UserEntity.Role newRole;
+        try {
+            newRole = UserEntity.Role.valueOf(request.role());
+        } catch (IllegalArgumentException | NullPointerException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid role: " + request.role()));
+        }
+        user.setRole(newRole);
+        userRepository.save(user);
+        return ResponseEntity.ok(Map.of("message", "Role updated", "email", user.getEmail(), "role", user.getRole().name()));
+    }
+
     @GetMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> listUsers() {
