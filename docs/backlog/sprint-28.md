@@ -37,9 +37,22 @@ same file/endpoint being touched anyway.
    serializing the password hash from `GET /api/admin/users`.
 2. **A-2 — order-ui**: new `/admin` route + page, admin-only guard, lists pending users
    with an Approve action.
+3. **A-3 — role-scoped service access** (added mid-scoping, Dimitri's live catch):
+   currently *any* authenticated account can use both `order-ui`/`order-service` and
+   `inventory-ui`/`inventory-service` regardless of role — a `CUSTOMER` account can hit
+   inventory endpoints and vice versa. Restricts `order-service`/`order-ui` to
+   `CUSTOMER`+`ADMIN` and `inventory-service`/`inventory-ui` to `WAREHOUSE_STAFF`+`ADMIN`,
+   at both the Spring Security layer (real enforcement) and each frontend's route guard
+   (UX only). Verified zero test-regression risk: the one existing test that exercises
+   `order-service`'s `/api/orders` endpoint (`OrderEventIntegrationTest`) disables the
+   Spring Security filter chain entirely (`@AutoConfigureMockMvc(addFilters = false)`),
+   so it's unaffected either way.
 
 Independent (different repos/tech stacks), can be implemented in either order, but
-dispatch sequentially through opencode as usual (one worktree agent at a time).
+dispatch sequentially through opencode as usual (one worktree agent at a time). A-3
+touches the same `auth.guard.ts`/`AuthService` files A-2 adds an accessor to in
+`order-ui` — sequence A-2 before A-3 to avoid two worktrees editing the same file
+independently and needing manual reconciliation.
 
 ## Explicitly out of scope
 
