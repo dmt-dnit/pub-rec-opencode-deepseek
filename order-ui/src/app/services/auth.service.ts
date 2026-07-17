@@ -1,14 +1,16 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, tap } from 'rxjs';
 import { LoginResponse, UserInfo } from '../models/user.model';
 import { environment } from '../../environments/environment';
 
+export const AUTH_TOKEN_KEY = 'auth-token';
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private apiBase = `${environment.authApiBase}/api/auth`;
-  private tokenKey = 'auth-token';
+  private tokenKey = AUTH_TOKEN_KEY;
   private userSubject = new BehaviorSubject<UserInfo | null>(null);
   user$ = this.userSubject.asObservable();
 
@@ -35,7 +37,17 @@ export class AuthService {
   fetchMe(): void {
     this.http.get<UserInfo>(`${this.apiBase}/me`).subscribe({
       next: user => this.userSubject.next(user),
-      error: () => this.logout()
+      error: (err: unknown) => {
+        if (err instanceof HttpErrorResponse && (err.status === 401 || err.status === 403)) {
+          this.logout();
+          return;
+        }
+        // A non-auth failure (network error, backend outage, unexpected app
+        // error) is not proof the session is invalid - logging out here would
+        // silently destroy a valid token over a transient problem. Surface it
+        // loudly instead of guessing.
+        console.error('AuthService.fetchMe: unexpected failure fetching /api/auth/me (not a 401/403), leaving current session intact', err);
+      }
     });
   }
 

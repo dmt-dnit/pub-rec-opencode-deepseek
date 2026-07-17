@@ -5,9 +5,13 @@ import { AuthService } from '../services/auth.service';
 export const authGuard = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
-  if (!auth.isLoggedIn()) return router.parseUrl('/login');
+  if (!auth.isLoggedIn()) {
+    console.warn('authGuard: no token present, redirecting to /login');
+    return router.parseUrl('/login');
+  }
   const role = auth.currentUser?.role;
   if (role && role !== 'WAREHOUSE_STAFF' && role !== 'ADMIN') {
+    console.warn(`authGuard: role "${role}" is not permitted here, logging out`);
     auth.logout();
     return router.parseUrl('/login');
   }

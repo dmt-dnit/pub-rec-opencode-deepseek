@@ -7,6 +7,7 @@ export const adminGuard = () => {
   const router = inject(Router);
   const role = auth.currentUser?.role;
   if (role && role !== 'ADMIN') {
+    console.warn(`adminGuard: role "${role}" is not ADMIN, redirecting to /dashboard`);
     return router.parseUrl('/dashboard');
   }
   return true;

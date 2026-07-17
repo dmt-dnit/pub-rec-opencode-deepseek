@@ -1,7 +1,76 @@
 # Investigation — auth token disappears from localStorage on page refresh
 
-**Status:** unresolved, handed to Codex (browser-capable) for live debugging. **Date opened:** 2026-07-17.
-**Severity:** real, reproducible, blocks normal use of the admin/dashboard pages across reloads — but not caused by any of the recent Sprint 26–30 code changes (all independently verified correct, see below).
+**Status:** RESOLVED 2026-07-17. Root cause confirmed via a real captured stack trace, fixed same day (untracked as a formal sprint — see "Root cause and fix" below).
+**Severity:** was real and reproducible, blocking normal use of the admin/dashboard pages across reloads — not caused by any of the recent Sprint 26–30 code changes (all independently verified correct, see below).
+
+## Root cause and fix (confirmed 2026-07-17)
+
+A "Claude browser extension" debugging session captured the actual call stack at the
+moment of failure, via a breakpoint inside the RxJS `subscribe({ error: ... })` handler
+that `AuthService.fetchMe()` installs. It shows:
+
+```
+Error: NG0200
+    at Jn.get (main.js:4:7263)
+    at Jn.retrieve (main.js:4:6337)
+    ...
+```
+
+caught by a `partialObserver` whose `error` callback is `() => this.logout()` — i.e.
+`fetchMe()`'s own error handler. **`NG0200` is Angular's circular-dependency-detected
+error.** The actual cycle:
+
+1. On a cold page load, Angular's DI container is empty. The first thing that needs
+   `AuthService` (a guard, a component) triggers its construction.
+2. `AuthService`'s constructor synchronously calls `this.fetchMe()` because a token is
+   present in `localStorage`.
+3. `fetchMe()` calls `this.http.get(...)`. Subscribing to that observable runs the
+   functional interceptor chain **synchronously**, including `authInterceptor`.
+4. `authInterceptor` called `inject(AuthService)` — but `AuthService` is still
+   mid-construction (its constructor hasn't returned yet). Angular detects this
+   re-entrant injection and throws `NG0200` instead of returning the not-yet-finished
+   instance.
+5. That throw happens *inside* the interceptor, before `next(req)` is ever called —
+   so the HTTP request is never actually dispatched. This is exactly why ruled-out
+   item 2 below observed "`/api/auth/me` never appears in the Network tab": the
+   request never leaves the interceptor stage, it doesn't fail to appear because it
+   wasn't attempted, it fails to appear because DI killed it before it could be sent.
+6. The `NG0200` `Error` object is delivered to `fetchMe()`'s `subscribe({ error })`
+   handler like any other error. RxJS treats a supplied `error` callback as *handled*
+   — nothing is logged to the console, which is why every "no console output" check
+   in this investigation came back clean even though a real exception was thrown on
+   every single reload.
+7. `error: () => this.logout()` then unconditionally wipes the token and redirects to
+   `/login` — regardless of *why* the observable errored. This is the actual point
+   where the "token disappears."
+
+This only manifests on a cold boot (empty DI container) because after a normal login,
+`AuthService` is already fully constructed by the time anything calls `fetchMe()` again
+— so the interceptor's `inject(AuthService)` resolves normally. That matches every
+reported symptom exactly (F5 always fails, but the app never breaks mid-session).
+
+**Fix applied (both `order-ui` and `inventory-ui`, same-day, no formal sprint number —
+logged here instead):**
+- `auth.interceptor.ts` no longer injects `AuthService` at all — it reads the token
+  directly from `localStorage` via a shared `AUTH_TOKEN_KEY` constant exported from
+  `auth.service.ts`. This removes the circular dependency entirely, regardless of
+  construction order, and is a strict simplification (the interceptor's only need was
+  the token string; `AuthService.getToken()` was already just a `localStorage.getItem`
+  wrapper).
+- `AuthService.fetchMe()`'s error handler now only calls `logout()` on a genuine
+  `401`/`403` `HttpErrorResponse` — any other failure (this bug, a network blip, a
+  backend outage) is logged loudly via `console.error` instead of silently destroying
+  a potentially-valid session. This is defense in depth: even if some future bug
+  reintroduces a non-auth error on this path, it won't silently log the user out
+  again, and it will be visible in the console instead of dark.
+- `auth.guard.ts`/`admin.guard.ts` in both apps now `console.warn` on every redirect
+  they trigger, naming the reason (no token / role mismatch) — previously silent.
+
+Verified: `ng build --configuration production` clean on both `order-ui` and
+`inventory-ui` after the change. Not yet live-verified in a real browser against the
+deployed Vercel build (Vercel redeploy + a real F5 reproduction is the remaining step).
+
+## Original investigation (kept for the record)
 
 ## Symptom
 
