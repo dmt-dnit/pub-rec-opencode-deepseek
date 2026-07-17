@@ -19,9 +19,12 @@
 #
 # Security scanning: a dedicated `snyk-security` job runs `snyk test --all-projects`
 #   across all 4 Maven modules + both npm UIs (no pom.xml changes). Threshold: fail on
-#   HIGH+ severity; report-only first pass (`continue-on-error: true`) — see the job's
-#   header comment. Requires the SNYK_TOKEN_CLAUDE_CODE_CLI repo secret. (Replaced OWASP Dependency-Check,
-#   whose full-NVD-database download was too slow/flaky for CI.)
+#   HIGH+ severity; this is now a blocking gate (promoted Sprint 35 after Sprint 34
+#   cleared the 4 Maven CVEs that were the real blocker — the originally-assumed
+#   dev-only Angular CVEs were never actually scanned by Snyk, which excludes
+#   devDependencies by default). Requires the SNYK_TOKEN_CLAUDE_CODE_CLI repo secret.
+#   (Replaced OWASP Dependency-Check, whose full-NVD-database download was too
+#   slow/flaky for CI.)
 #
 # ADMIN ACTION REQUIRED (Dimitri):
 #   1. Snyk token — add SNYK_TOKEN_CLAUDE_CODE_CLI as a repository secret
@@ -156,11 +159,12 @@ jobs:
 
   # ── 4. Snyk SCA (server-side dependency vulnerability scan) ──────────────────
   #
-  # Policy: fail on HIGH+ severity. Report-only in this first iteration
-  # (`continue-on-error: true`) because the known dev-only Angular toolchain CVEs
-  # (http-proxy-middleware etc.) have no forward fix at the Angular 22.0.4 floor and
-  # would otherwise red the gate; promote to blocking (remove continue-on-error)
-  # once those are dismissed/resolved.
+  # Policy: fail on HIGH+ severity. This is now a blocking gate — promotional
+  # from report-only in Sprint 35 after Sprint 34 pinned the 4 vulnerable
+  # transitive Maven dependencies (logback-core, tomcat-embed-core,
+  # jackson-databind × 2) that were the real blocker. The originally-assumed
+  # dev-only Angular CVEs were never actually scanned by Snyk (it excludes
+  # devDependencies by default), so they were never genuinely in the way.
   #
   # One `snyk test --all-projects` covers all 4 Maven poms + both npm UIs. Fast and
   # account-backed — replaced OWASP Dependency-Check, whose ~360k-record NVD database
@@ -169,11 +173,12 @@ jobs:
   #
   # Requires repo secret SNYK_TOKEN_CLAUDE_CODE_CLI (free Snyk account → repo Settings → Secrets → Actions).
   snyk-security:
-    name: Snyk SCA (HIGH+ threshold, report-only)
+    name: Snyk SCA (HIGH+ threshold, blocking gate)
     runs-on: ubuntu-latest
     # NOT in any job's `needs` — a scan hiccup cannot mask test failures.
-    # continue-on-error: report-only first pass. Remove to make it a blocking gate.
-    continue-on-error: true
+    # Promoted from report-only to blocking gate in Sprint 35 (Sprint 34 cleared the
+    # 4 Maven CVEs; the originally-assumed dev-only Angular CVEs were never actually
+    # scanned by Snyk, which excludes devDependencies by default).
     permissions:
       contents: read
       security-events: write   # upload SARIF to the Security tab
@@ -199,7 +204,6 @@ jobs:
         uses: snyk/actions/setup@master
 
       - name: Snyk test — all projects (4 Maven modules + 2 npm UIs), HIGH+
-        continue-on-error: true   # report-only; vulns above threshold don't fail the build yet
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN_CLAUDE_CODE_CLI }}
         run: snyk test --all-projects --severity-threshold=high --sarif-file-output=snyk.sarif
