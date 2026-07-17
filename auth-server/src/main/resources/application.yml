@@ -27,6 +27,10 @@ spring:
             client-secret: ${GOOGLE_CLIENT_SECRET:placeholder}
             scope: openid,profile,email
 
+app:
+  jwt:
+    key-path: ${APP_JWT_KEY_PATH:}
+
 auth:
   jwt:
     issuer: http://localhost:9000
