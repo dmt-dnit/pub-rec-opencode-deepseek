@@ -30,6 +30,8 @@ spring:
 app:
   jwt:
     key-path: ${APP_JWT_KEY_PATH:}
+  oauth2:
+    success-redirect-base-url: ${APP_OAUTH2_REDIRECT_BASE:http://localhost:4200}
 
 auth:
   jwt:

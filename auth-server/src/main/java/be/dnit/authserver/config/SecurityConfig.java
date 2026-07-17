@@ -1,5 +1,6 @@
 package be.dnit.authserver.config;
 
+import be.dnit.authserver.service.CustomOAuth2UserService;
 import be.dnit.authserver.service.CustomUserDetailsService;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.proc.SecurityContext;
@@ -11,8 +12,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
@@ -31,20 +30,21 @@ import java.util.List;
 public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2SuccessHandler oauth2SuccessHandler;
     private final ImmutableJWKSet<SecurityContext> jwkSet;
     private final RSAPublicKey publicKey;
 
     public SecurityConfig(CustomUserDetailsService userDetailsService,
+                          CustomOAuth2UserService customOAuth2UserService,
+                          OAuth2SuccessHandler oauth2SuccessHandler,
                           ImmutableJWKSet<SecurityContext> jwkSet,
                           java.security.KeyPair keyPair) {
         this.userDetailsService = userDetailsService;
+        this.customOAuth2UserService = customOAuth2UserService;
+        this.oauth2SuccessHandler = oauth2SuccessHandler;
         this.jwkSet = jwkSet;
         this.publicKey = (RSAPublicKey) keyPair.getPublic();
-    }
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
     }
 
     @Bean
@@ -78,9 +78,8 @@ public class SecurityConfig {
                 .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
             )
             .oauth2Login(oauth2 -> oauth2
-                .successHandler((request, response, authentication) -> {
-                    response.sendRedirect("http://localhost:4200/login?oauth2=success");
-                })
+                .userInfoEndpoint(u -> u.userService(customOAuth2UserService))
+                .successHandler(oauth2SuccessHandler)
             )
             .userDetailsService(userDetailsService);
 

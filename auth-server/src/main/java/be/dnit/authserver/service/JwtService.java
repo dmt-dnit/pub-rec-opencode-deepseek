@@ -1,6 +1,7 @@
 package be.dnit.authserver.service;
 
 import be.dnit.authserver.model.UserEntity;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
@@ -13,7 +14,7 @@ public class JwtService {
 
     private final JwtEncoder jwtEncoder;
 
-    public JwtService(JwtEncoder jwtEncoder) {
+    public JwtService(@Lazy JwtEncoder jwtEncoder) {
         this.jwtEncoder = jwtEncoder;
     }
 
