@@ -1,6 +1,6 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
+import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -43,6 +43,10 @@ import { environment } from '../../../environments/environment';
             </span>
           </button>
 
+          @if (oauthMessage) {
+            <p style="text-align:center;margin-top:16px;color:#f44336">{{ oauthMessage }}</p>
+          }
+
           <p style="text-align:center;margin-top:16px">
             Don't have an account? <a routerLink="/register">Register</a>
           </p>
@@ -51,12 +55,32 @@ import { environment } from '../../../environments/environment';
     </div>
   `
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   email = '';
   password = '';
   loading = false;
+  oauthMessage: string | null = null;
 
-  constructor(private auth: AuthService, private router: Router, private snack: MatSnackBar) {}
+  constructor(private auth: AuthService, private router: Router, private route: ActivatedRoute, private snack: MatSnackBar) {}
+
+  ngOnInit(): void {
+    this.route.queryParamMap.subscribe(params => {
+      const oauth2 = params.get('oauth2');
+      if (!oauth2) return;
+
+      if (oauth2 === 'success') {
+        const token = params.get('token');
+        if (token) {
+          this.auth.loginWithToken(token);
+          this.router.navigate(['/dashboard']);
+        }
+      } else if (oauth2 === 'pending') {
+        this.oauthMessage = 'Your account is pending admin approval. Please wait for an administrator to activate your account.';
+      } else if (oauth2 === 'error') {
+        this.oauthMessage = 'Google sign-in failed. Please try again or use email/password login.';
+      }
+    });
+  }
 
   onLogin(): void {
     if (!this.email || !this.password) return;

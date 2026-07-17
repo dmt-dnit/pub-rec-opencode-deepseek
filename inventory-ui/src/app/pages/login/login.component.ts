@@ -6,14 +6,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatDividerModule } from '@angular/material/divider';
 import { AuthService } from '../../services/auth.service';
-import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule, RouterModule, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatSnackBarModule, MatDividerModule],
+  imports: [FormsModule, RouterModule, MatCardModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatSnackBarModule],
   template: `
     <div style="display:flex;justify-content:center;align-items:center;height:100vh;background:#f5f5f5">
       <mat-card style="width:400px">
@@ -34,14 +32,6 @@ import { environment } from '../../../environments/environment';
               {{ loading ? 'Signing in...' : 'Sign In' }}
             </button>
           </form>
-
-          <mat-divider style="margin:20px 0"></mat-divider>
-
-          <button mat-stroked-button class="full-width" (click)="loginWithGoogle()">
-            <span style="display:flex;align-items:center;justify-content:center;gap:8px">
-              Login with Google
-            </span>
-          </button>
 
           <p style="text-align:center;margin-top:16px">
             Don't have an account? <a routerLink="/register">Register</a>
@@ -68,9 +58,5 @@ export class LoginComponent {
         this.snack.open(err.error?.error || 'Login failed', 'Close', { duration: 4000 });
       }
     });
-  }
-
-  loginWithGoogle(): void {
-    window.location.href = `${environment.authApiBase}/oauth2/authorization/google`;
   }
 }

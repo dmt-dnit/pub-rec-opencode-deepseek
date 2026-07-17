@@ -51,6 +51,11 @@ export class AuthService {
     });
   }
 
+  loginWithToken(token: string): void {
+    localStorage.setItem(this.tokenKey, token);
+    this.fetchMe();
+  }
+
   setSession(res: LoginResponse): void {
     localStorage.setItem(this.tokenKey, res.token);
     this.userSubject.next({ email: res.email, name: res.name, role: res.role });
