@@ -179,25 +179,31 @@ end-to-end on the public endpoints — see the roadmap status block above for th
 - Optional Testcontainers major-version bump (1.21.3→2.0.5) — pure tech debt, no
   go-live dependency, can happen whenever there's a quiet sprint.
 
-### Phase 8 — real database instead of in-memory H2 (added 2026-07-16, deferred/optional)
+### Phase 8 — real database instead of in-memory H2 — **CLOSED 2026-07-18**
 All three Spring services currently use in-memory H2 (`orderdb`, `inventorydb`,
 `authdb`) — a deliberate simplification from earlier in this roadmap (removes DB
 provisioning/backups/migration as a go-live concern entirely), not an oversight. Real
 consequence surfaced live: every backend restart wipes all data (users, orders,
 approvals), which is why re-approving a registered user was needed again after a
-redeploy. Dimitri's call (2026-07-16): make this **optional, scope it when we actually
-get here** — not blocking any current phase. When it is scoped, open questions to
-resolve then, not now: which service(s) actually need persistence for the demo to still
-make sense (all three vs. just the ones where wiped state is actually annoying),
-engine choice (Postgres is the obvious default given `dnit-vps` already runs Postgres
-for other projects per the roadmap's port table), and whether this is a shared instance
-or one per service given each currently owns its schema independently.
+redeploy. Scoped down 2026-07-18 (Dimitri's call): **auth-server only** —
+`order-service`/`inventory-service` stay in-memory, wiped state there is acceptable for
+a demo. Closed the same day: **Sprint 29 (cleared 2026-07-17) already covers this** —
+`auth-server`'s H2 moved from `jdbc:h2:mem:authdb` to a file-backed URL in production
+(`SPRING_DATASOURCE_URL=jdbc:h2:file:/opt/pubrec/auth/data/authdb`) with `ddl-auto:
+update`, and persistence was live-proven across two consecutive redeploys. No Postgres
+migration needed — Dimitri's explicit call that the existing file-backed-H2 fix
+satisfies this phase as scoped. `order-service`/`inventory-service` remain in-memory by
+design.
 
-## Current state (updated 2026-07-16)
+## Current state (updated 2026-07-18)
 
-Phases 1–4 are done (Phase 4 live-verified end-to-end: real account registered, admin-
-approved, login, orders placed for SKU 1–3, reserved/rejected statuses both confirmed
-working in the UI on the actual public `*.vercel.app` + `saga-*.dnit.be` endpoints).
-Phase 5 (Snyk gate promotion) and Phase 6 (real Google OAuth) remain open, gated as
-described above. Phase 7 (AUTO-3 operational driver) still needs Dimitri's sign-off to
-start. Phase 8 (real DB) is new, deliberately deferred/optional per the note above.
+Phases 1–6 and 8 are all done. Phase 4 live-verified end-to-end: real account
+registered, admin-approved, login, orders placed for SKU 1–3, reserved/rejected
+statuses both confirmed working in the UI on the actual public `*.vercel.app` +
+`saga-*.dnit.be` endpoints. Phase 5 (Snyk gate promotion) cleared Sprint 35. Phase 6
+(real Google OAuth) cleared Sprints 36–38, all three with genuine Codex ACCEPT and
+live-verified by Dimitri on production. Phase 8 (real DB for auth-server) closed
+2026-07-18 — satisfied by Sprint 29's existing file-backed-H2 fix, no new work needed.
+**Only Phase 7 (AUTO-3 operational driver) remains open** — deliberately deferred to be
+picked up last, per Dimitri's 2026-07-18 call; open design questions (driver host,
+push-gate target, notify channel) still unresolved.
