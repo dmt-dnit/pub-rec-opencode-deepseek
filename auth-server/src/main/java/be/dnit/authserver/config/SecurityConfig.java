@@ -1,6 +1,6 @@
 package be.dnit.authserver.config;
 
-import be.dnit.authserver.service.CustomOAuth2UserService;
+import be.dnit.authserver.service.CustomOidcUserService;
 import be.dnit.authserver.service.CustomUserDetailsService;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.proc.SecurityContext;
@@ -30,18 +30,18 @@ import java.util.List;
 public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
-    private final CustomOAuth2UserService customOAuth2UserService;
+    private final CustomOidcUserService customOidcUserService;
     private final OAuth2SuccessHandler oauth2SuccessHandler;
     private final ImmutableJWKSet<SecurityContext> jwkSet;
     private final RSAPublicKey publicKey;
 
     public SecurityConfig(CustomUserDetailsService userDetailsService,
-                          CustomOAuth2UserService customOAuth2UserService,
+                          CustomOidcUserService customOidcUserService,
                           OAuth2SuccessHandler oauth2SuccessHandler,
                           ImmutableJWKSet<SecurityContext> jwkSet,
                           java.security.KeyPair keyPair) {
         this.userDetailsService = userDetailsService;
-        this.customOAuth2UserService = customOAuth2UserService;
+        this.customOidcUserService = customOidcUserService;
         this.oauth2SuccessHandler = oauth2SuccessHandler;
         this.jwkSet = jwkSet;
         this.publicKey = (RSAPublicKey) keyPair.getPublic();
@@ -78,7 +78,7 @@ public class SecurityConfig {
                 .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
             )
             .oauth2Login(oauth2 -> oauth2
-                .userInfoEndpoint(u -> u.userService(customOAuth2UserService))
+                .userInfoEndpoint(u -> u.oidcUserService(customOidcUserService))
                 .successHandler(oauth2SuccessHandler)
             )
             .userDetailsService(userDetailsService);

@@ -11,17 +11,18 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
+import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
-import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
-import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
-import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.security.oauth2.core.oidc.OidcIdToken;
+import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -29,20 +30,33 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class CustomOAuth2UserServiceTest {
+class CustomOidcUserServiceTest {
 
     @Mock private UserRepository userRepository;
     @Mock private PasswordEncoder passwordEncoder;
-    @Mock private OAuth2UserService<OAuth2UserRequest, OAuth2User> delegate;
+    @Mock private OAuth2UserService<OidcUserRequest, OidcUser> delegate;
 
-    private CustomOAuth2UserService service;
-    private OAuth2UserRequest userRequest;
-    private DefaultOAuth2User googleUser;
+    private CustomOidcUserService service;
+    private OidcUserRequest userRequest;
+    private DefaultOidcUser oidcUser;
 
     @BeforeEach
     void setUp() {
-        service = new CustomOAuth2UserService(userRepository, passwordEncoder);
+        service = new CustomOidcUserService(userRepository, passwordEncoder);
         service.setDelegate(delegate);
+
+        OidcIdToken idToken = OidcIdToken.withTokenValue("fake-id-token")
+                .subject("google-sub-123")
+                .issuer("https://accounts.google.com")
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .claim("sub", "google-sub-123")
+                .claim("email", "test@example.com")
+                .claim("name", "Test User")
+                .claim("email_verified", true)
+                .build();
+
+        oidcUser = new DefaultOidcUser(List.of(), idToken);
 
         ClientRegistration registration = ClientRegistration.withRegistrationId("google")
                 .clientId("placeholder")
@@ -53,6 +67,7 @@ class CustomOAuth2UserServiceTest {
                 .tokenUri("https://oauth2.googleapis.com/token")
                 .userInfoUri("https://www.googleapis.com/oauth2/v3/userinfo")
                 .userNameAttributeName("sub")
+                .scope("openid", "profile", "email")
                 .build();
 
         OAuth2AccessToken accessToken = new OAuth2AccessToken(
@@ -62,23 +77,17 @@ class CustomOAuth2UserServiceTest {
                 Instant.now().plusSeconds(3600)
         );
 
-        userRequest = new OAuth2UserRequest(registration, accessToken);
-
-        googleUser = new DefaultOAuth2User(
-                List.of(),
-                Map.of("email", "test@example.com", "name", "Test User", "sub", "google-sub-123"),
-                "sub"
-        );
+        userRequest = new OidcUserRequest(registration, accessToken, idToken);
     }
 
     @Test
     void firstCallCreatesPendingCustomer() {
-        when(delegate.loadUser(userRequest)).thenReturn(googleUser);
+        when(delegate.loadUser(userRequest)).thenReturn(oidcUser);
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.empty());
         when(passwordEncoder.encode(any())).thenReturn("encoded-random");
         when(userRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        OAuth2User result = service.loadUser(userRequest);
+        OidcUser result = service.loadUser(userRequest);
 
         assertNotNull(result);
         assertEquals("test@example.com", result.getAttribute("email"));
@@ -100,10 +109,10 @@ class CustomOAuth2UserServiceTest {
                 "test@example.com", "some-encoded-pw", "Test User", Role.CUSTOMER, Status.PENDING
         );
 
-        when(delegate.loadUser(userRequest)).thenReturn(googleUser);
+        when(delegate.loadUser(userRequest)).thenReturn(oidcUser);
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(existing));
 
-        OAuth2User result = service.loadUser(userRequest);
+        OidcUser result = service.loadUser(userRequest);
 
         assertNotNull(result);
         verify(userRepository, never()).save(any());
@@ -115,10 +124,10 @@ class CustomOAuth2UserServiceTest {
                 "test@example.com", "some-encoded-pw", "Test User", Role.ADMIN, Status.ACTIVE
         );
 
-        when(delegate.loadUser(userRequest)).thenReturn(googleUser);
+        when(delegate.loadUser(userRequest)).thenReturn(oidcUser);
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(existing));
 
-        OAuth2User result = service.loadUser(userRequest);
+        OidcUser result = service.loadUser(userRequest);
 
         assertNotNull(result);
         verify(userRepository, never()).save(any());
@@ -128,18 +137,45 @@ class CustomOAuth2UserServiceTest {
 
     @Test
     void fallsBackToEmailWhenNameIsNull() {
-        DefaultOAuth2User userNoName = new DefaultOAuth2User(
-                List.of(),
-                Map.of("email", "noname@example.com", "sub", "google-sub-456"),
-                "sub"
+        OidcIdToken idTokenNoName = OidcIdToken.withTokenValue("fake-id-token-2")
+                .subject("google-sub-456")
+                .issuer("https://accounts.google.com")
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .claim("sub", "google-sub-456")
+                .claim("email", "noname@example.com")
+                .claim("email_verified", true)
+                .build();
+
+        DefaultOidcUser userNoName = new DefaultOidcUser(List.of(), idTokenNoName);
+
+        ClientRegistration registration = ClientRegistration.withRegistrationId("google")
+                .clientId("placeholder")
+                .clientSecret("placeholder")
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .redirectUri("{baseUrl}/login/oauth2/code/{registrationId}")
+                .authorizationUri("https://accounts.google.com/o/oauth2/auth")
+                .tokenUri("https://oauth2.googleapis.com/token")
+                .userInfoUri("https://www.googleapis.com/oauth2/v3/userinfo")
+                .userNameAttributeName("sub")
+                .scope("openid", "profile", "email")
+                .build();
+
+        OAuth2AccessToken accessToken = new OAuth2AccessToken(
+                OAuth2AccessToken.TokenType.BEARER,
+                "token-value-2",
+                Instant.now(),
+                Instant.now().plusSeconds(3600)
         );
 
-        when(delegate.loadUser(userRequest)).thenReturn(userNoName);
+        OidcUserRequest requestNoName = new OidcUserRequest(registration, accessToken, idTokenNoName);
+
+        when(delegate.loadUser(requestNoName)).thenReturn(userNoName);
         when(userRepository.findByEmail("noname@example.com")).thenReturn(Optional.empty());
         when(passwordEncoder.encode(any())).thenReturn("encoded-random");
         when(userRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        service.loadUser(userRequest);
+        service.loadUser(requestNoName);
 
         ArgumentCaptor<UserEntity> captor = ArgumentCaptor.forClass(UserEntity.class);
         verify(userRepository).save(captor.capture());
